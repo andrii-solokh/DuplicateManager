@@ -1,6 +1,7 @@
 # Testing Guide
 
-This guide covers testing Duplicate Manager, including running tests, creating test data, and best practices.
+This guide covers testing Duplicate Manager, including running tests, creating test data, and best
+practices.
 
 ## Running Tests
 
@@ -74,6 +75,7 @@ npm run test:unit -- --testPathPattern=duplicateViewer
 ### DuplicateViewerControllerTest
 
 Tests for the main viewer controller including:
+
 - Getting duplicate sets with various filters
 - Getting duplicate items for a set
 - Getting object type options
@@ -85,6 +87,7 @@ Tests for the main viewer controller including:
 ### DuplicateMergeControllerTest
 
 Tests for the merge controller including:
+
 - Record comparison for different object types
 - Field value comparison and formatting
 - Merge operations with field selections
@@ -94,6 +97,7 @@ Tests for the merge controller including:
 ### DuplicateScannerJobTest
 
 Tests for the scanner job including:
+
 - Job execution for various objects
 - Batch size handling
 - Error handling for invalid objects
@@ -110,7 +114,7 @@ The test classes use `@TestSetup` for test data:
 @TestSetup
 static void setupTestData() {
     List<Contact> contacts = new List<Contact>();
-    
+
     // Create potential duplicates
     contacts.add(new Contact(
         FirstName = 'John',
@@ -122,7 +126,7 @@ static void setupTestData() {
         LastName = 'Duplicate',
         Email = 'john2@test.com'
     ));
-    
+
     // Insert with duplicate rules bypassed
     Database.DMLOptions dml = new Database.DMLOptions();
     dml.DuplicateRuleHeader.allowSave = true;
@@ -137,18 +141,18 @@ static void setupTestData() {
 static void createTestDuplicateSet() {
     // Get an active duplicate rule
     DuplicateRule rule = [
-        SELECT Id 
-        FROM DuplicateRule 
-        WHERE SobjectType = 'Contact' 
-        AND IsActive = true 
+        SELECT Id
+        FROM DuplicateRule
+        WHERE SobjectType = 'Contact'
+        AND IsActive = true
         LIMIT 1
     ];
-    
+
     // Create duplicate set
     DuplicateRecordSet drs = new DuplicateRecordSet();
     drs.DuplicateRuleId = rule.Id;
     insert drs;
-    
+
     // Add items
     List<Contact> contacts = [SELECT Id FROM Contact LIMIT 2];
     List<DuplicateRecordItem> items = new List<DuplicateRecordItem>();
@@ -171,12 +175,12 @@ static void createTestDuplicateSet() {
 
 ### Current Coverage by Class
 
-| Class | Coverage |
-|-------|----------|
-| DuplicateViewerController | 95%+ |
-| DuplicateMergeController | 95%+ |
-| DuplicateScannerJob | 90%+ |
-| DuplicateScannerScheduler | 95%+ |
+| Class                     | Coverage |
+| ------------------------- | -------- |
+| DuplicateViewerController | 95%+     |
+| DuplicateMergeController  | 95%+     |
+| DuplicateScannerJob       | 90%+     |
+| DuplicateScannerScheduler | 95%+     |
 
 ## Best Practices
 
@@ -218,28 +222,28 @@ import DuplicateViewer from 'c/duplicateViewer';
 import getDuplicateSets from '@salesforce/apex/DuplicateViewerController.getDuplicateSets';
 
 jest.mock(
-    '@salesforce/apex/DuplicateViewerController.getDuplicateSets',
-    () => ({ default: jest.fn() }),
-    { virtual: true }
+  '@salesforce/apex/DuplicateViewerController.getDuplicateSets',
+  () => ({ default: jest.fn() }),
+  { virtual: true }
 );
 
 describe('c-duplicate-viewer', () => {
-    afterEach(() => {
-        while (document.body.firstChild) {
-            document.body.removeChild(document.body.firstChild);
-        }
-        jest.clearAllMocks();
-    });
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+  });
 
-    it('displays loading spinner initially', () => {
-        const element = createElement('c-duplicate-viewer', {
-            is: DuplicateViewer
-        });
-        document.body.appendChild(element);
-
-        const spinner = element.shadowRoot.querySelector('lightning-spinner');
-        expect(spinner).not.toBeNull();
+  it('displays loading spinner initially', () => {
+    const element = createElement('c-duplicate-viewer', {
+      is: DuplicateViewer
     });
+    document.body.appendChild(element);
+
+    const spinner = element.shadowRoot.querySelector('lightning-spinner');
+    expect(spinner).not.toBeNull();
+  });
 });
 ```
 
@@ -248,6 +252,7 @@ describe('c-duplicate-viewer', () => {
 ### "No active duplicate rules found"
 
 Ensure your scratch org has active duplicate rules:
+
 1. Check Setup → Duplicate Rules
 2. Activate the included sample rule
 3. Or create a test rule in your test setup

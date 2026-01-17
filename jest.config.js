@@ -11,8 +11,5 @@ module.exports = {
             statements: 80
         }
     },
-    collectCoverageFrom: [
-        '**/lwc/**/*.js',
-        '!**/lwc/**/__tests__/**'
-    ]
+    collectCoverageFrom: ['**/lwc/**/*.js', '!**/lwc/**/__tests__/**']
 };

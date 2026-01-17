@@ -37,7 +37,7 @@ export default class DuplicateViewer extends LightningElement {
     @track showDetailModal = false;
     @track selectedSetId = null;
     @track showJobPanel = false;
-    
+
     // Merge Modal State
     @track showMergeModal = false;
     @track mergeSetId = null;
@@ -73,7 +73,7 @@ export default class DuplicateViewer extends LightningElement {
     @wire(getObjectTypeOptions)
     wiredObjectTypes({ error, data }) {
         if (data) {
-            this.objectTypeOptions = data.map(opt => ({
+            this.objectTypeOptions = data.map((opt) => ({
                 label: opt.label,
                 value: opt.value
             }));
@@ -127,9 +127,9 @@ export default class DuplicateViewer extends LightningElement {
     async loadRecentJobs() {
         const jobs = await getRecentJobs();
         this.recentJobs = jobs || [];
-        
+
         // Check if there's a running job
-        const runningJob = this.recentJobs.find(j => !j.isComplete);
+        const runningJob = this.recentJobs.find((j) => !j.isComplete);
         if (runningJob) {
             this.currentJob = runningJob;
             this.startJobPolling(runningJob.jobId);
@@ -154,21 +154,29 @@ export default class DuplicateViewer extends LightningElement {
 
     startJobPolling(jobId) {
         this.stopJobPolling();
-        
+
         this._jobPollInterval = setInterval(async () => {
             try {
                 const status = await getJobStatus({ jobId });
                 this.currentJob = status;
-                
+
                 if (status.isComplete) {
                     this.stopJobPolling();
-                    
+
                     if (status.isSuccess) {
-                        this.showToast('Success', 'Duplicate scan completed successfully!', 'success');
+                        this.showToast(
+                            'Success',
+                            'Duplicate scan completed successfully!',
+                            'success'
+                        );
                     } else if (status.status === 'Failed') {
-                        this.showToast('Error', `Scan failed: ${status.extendedStatus || 'Unknown error'}`, 'error');
+                        this.showToast(
+                            'Error',
+                            `Scan failed: ${status.extendedStatus || 'Unknown error'}`,
+                            'error'
+                        );
                     }
-                    
+
                     // Refresh data after job completes
                     await this.loadAllData();
                 }
@@ -275,16 +283,20 @@ export default class DuplicateViewer extends LightningElement {
         }
 
         if (this.hasRunningJob) {
-            this.showToast('Info', 'A scan is already in progress. Please wait for it to complete.', 'info');
+            this.showToast(
+                'Info',
+                'A scan is already in progress. Please wait for it to complete.',
+                'info'
+            );
             return;
         }
 
         // Warn user about deletion of existing duplicate sets and potential long wait time
-        const warningMessage = 
+        const warningMessage =
             `Warning: Starting a new scan will delete all existing Duplicate Record Sets for ${this.selectedObjectType}.\n\n` +
             `If your org has a large number of records, this scan may take a significant amount of time to complete.\n\n` +
             `Do you want to proceed?`;
-        
+
         // eslint-disable-next-line no-alert
         if (!confirm(warningMessage)) {
             return;
@@ -292,7 +304,7 @@ export default class DuplicateViewer extends LightningElement {
 
         try {
             const jobId = await runDuplicateScan({ objectType: this.selectedObjectType });
-            
+
             this.currentJob = {
                 jobId: jobId,
                 status: 'Queued',
@@ -300,14 +312,14 @@ export default class DuplicateViewer extends LightningElement {
                 isComplete: false,
                 isSuccess: false
             };
-            
-            this.showToast('Success', 
-                `Duplicate scan started for ${this.selectedObjectType}. Monitoring progress...`, 
+
+            this.showToast(
+                'Success',
+                `Duplicate scan started for ${this.selectedObjectType}. Monitoring progress...`,
                 'success'
             );
-            
+
             this.startJobPolling(jobId);
-            
         } catch (err) {
             this.showToast('Error', this.extractErrorMessage(err), 'error');
         }
@@ -353,23 +365,22 @@ export default class DuplicateViewer extends LightningElement {
 
         try {
             // Optimistically remove from UI immediately
-            this.duplicateSets = this.duplicateSets.filter(s => s.id !== setId);
+            this.duplicateSets = this.duplicateSets.filter((s) => s.id !== setId);
             this.totalCount = Math.max(0, this.totalCount - 1);
-            
+
             // Update summary counts
             this.summary = {
                 ...this.summary,
                 totalSets: Math.max(0, this.summary.totalSets - 1)
             };
-            
+
             // Actually delete
             await deleteDuplicateSet({ setId });
-            
+
             this.showToast('Success', 'Duplicate set deleted successfully.', 'success');
-            
+
             // Reload to get accurate counts
             await this.loadSummary();
-            
         } catch (err) {
             this.showToast('Error', this.extractErrorMessage(err), 'error');
             // Reload data to restore correct state
@@ -443,20 +454,20 @@ export default class DuplicateViewer extends LightningElement {
 
         try {
             const [hour, minute] = this.scheduleTime.split(':').map(Number);
-            
+
             await scheduleJob({
                 objectType: this.selectedObjectType,
                 hour: hour,
                 minute: minute
             });
 
-            this.showToast('Success', 
+            this.showToast(
+                'Success',
                 `Daily scan scheduled for ${this.selectedObjectType} at ${this.scheduleTime}`,
                 'success'
             );
 
             await this.loadScheduleStatus();
-
         } catch (err) {
             this.showToast('Error', this.extractErrorMessage(err), 'error');
         }
@@ -468,13 +479,13 @@ export default class DuplicateViewer extends LightningElement {
         try {
             await unscheduleJob({ objectType: this.selectedObjectType });
 
-            this.showToast('Success', 
+            this.showToast(
+                'Success',
                 `Daily scan cancelled for ${this.selectedObjectType}`,
                 'success'
             );
 
             await this.loadScheduleStatus();
-
         } catch (err) {
             this.showToast('Error', this.extractErrorMessage(err), 'error');
         }
@@ -484,7 +495,7 @@ export default class DuplicateViewer extends LightningElement {
         if (!this.schedules || this.selectedObjectType === 'All') {
             return null;
         }
-        return this.schedules.find(s => s.objectType === this.selectedObjectType);
+        return this.schedules.find((s) => s.objectType === this.selectedObjectType);
     }
 
     get hasActiveSchedule() {

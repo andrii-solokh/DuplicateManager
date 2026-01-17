@@ -16,9 +16,7 @@
         { "type": "test", "section": "Tests", "hidden": true },
         { "type": "ci", "section": "CI/CD", "hidden": true }
       ],
-      "extra-files": [
-        "sfdx-project.json"
-      ]
+      "extra-files": ["sfdx-project.json"]
     }
   },
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"

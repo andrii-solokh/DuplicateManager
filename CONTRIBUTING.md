@@ -1,10 +1,12 @@
 # Contributing to Duplicate Manager
 
-Thank you for your interest in contributing to Duplicate Manager! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Duplicate Manager! This document provides guidelines
+and instructions for contributing.
 
 ## Code of Conduct
 
-Please be respectful and constructive in all interactions. We're all here to build great software together.
+Please be respectful and constructive in all interactions. We're all here to build great software
+together.
 
 ## Getting Started
 
@@ -37,6 +39,7 @@ type(scope): description
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 Examples:
+
 - `feat(merge): add support for custom objects`
 - `fix(viewer): resolve pagination offset issue`
 - `docs(readme): update installation instructions`
@@ -45,7 +48,8 @@ Examples:
 
 ### Apex
 
-- Follow [Salesforce Apex Best Practices](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_intro_what_is_apex.htm)
+- Follow
+  [Salesforce Apex Best Practices](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_intro_what_is_apex.htm)
 - Use `with sharing` unless there's a documented reason not to
 - Include ApexDoc comments for all public methods
 - Maintain >80% code coverage with meaningful assertions
@@ -53,7 +57,8 @@ Examples:
 
 ### Lightning Web Components
 
-- Follow [LWC Best Practices](https://developer.salesforce.com/docs/component-library/documentation/en/lwc/lwc.get_started_best_practices)
+- Follow
+  [LWC Best Practices](https://developer.salesforce.com/docs/component-library/documentation/en/lwc/lwc.get_started_best_practices)
 - Use `@track` only when necessary (arrays/objects that need reactivity)
 - Handle all error states gracefully
 - Include loading states for async operations

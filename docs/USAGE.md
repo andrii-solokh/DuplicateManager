@@ -22,6 +22,7 @@ The main dashboard provides:
 ### Understanding Duplicate Sets
 
 Each card shows:
+
 - **Object Badge**: The type of records in the set (Contact, Account, etc.)
 - **Record Count**: Number of duplicate records in the set
 - **Set Name**: Auto-generated name from Salesforce
@@ -31,6 +32,7 @@ Each card shows:
 ### Viewing Set Details
 
 Click on any duplicate set card to see:
+
 - All records in the duplicate set
 - Record names and IDs
 - Links to open each record in a new tab
@@ -53,6 +55,7 @@ Click on any duplicate set card to see:
 3. Click "Enable Daily Scan"
 
 To modify or cancel:
+
 - Change the time and click "Update Schedule"
 - Click "Cancel Schedule" to disable
 
@@ -72,11 +75,13 @@ To modify or cancel:
 ### Choosing Field Values
 
 The comparison table shows all fields:
+
 - **Differences** (orange): Fields with different values - click to select
 - **Same** (green): Fields with identical values across all records
 - **Empty** (gray): Fields with no values
 
 To select a value:
+
 1. Click on the cell with the value you want to keep
 2. A checkmark appears on selected values
 3. Selected values will be copied to the master record
@@ -84,6 +89,7 @@ To select a value:
 ### Filtering Fields
 
 Use the filter buttons to show/hide:
+
 - **Differences**: Fields with different values (shown by default)
 - **Same**: Fields with matching values
 - **Empty**: Fields with no values
@@ -102,6 +108,7 @@ Use the search box to find specific fields.
 ### Deleting a Set
 
 If duplicates have been resolved outside the app:
+
 1. Click the delete icon on the set card
 2. Confirm deletion
 3. This only removes the duplicate set record, not the actual records

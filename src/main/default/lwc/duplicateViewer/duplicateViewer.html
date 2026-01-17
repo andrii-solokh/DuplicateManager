@@ -4,10 +4,16 @@
         <header class="header">
             <div class="header-content">
                 <div class="header-title">
-                    <lightning-icon icon-name="standard:record_lookup" size="medium" class="header-icon"></lightning-icon>
+                    <lightning-icon
+                        icon-name="standard:record_lookup"
+                        size="medium"
+                        class="header-icon"
+                    ></lightning-icon>
                     <h1>Duplicate Manager</h1>
                 </div>
-                <p class="header-subtitle">View and manage duplicate records across your organization</p>
+                <p class="header-subtitle">
+                    View and manage duplicate records across your organization
+                </p>
             </div>
         </header>
 
@@ -16,7 +22,11 @@
             <section class="job-status-banner">
                 <div class="job-status-content">
                     <div class="job-status-info">
-                        <lightning-spinner alternative-text="Running" size="small" class="job-spinner"></lightning-spinner>
+                        <lightning-spinner
+                            alternative-text="Running"
+                            size="small"
+                            class="job-spinner"
+                        ></lightning-spinner>
                         <div class="job-status-text">
                             <span class="job-status-label">Scanning in progress...</span>
                             <span class="job-status-detail">{runningJobStatus}</span>
@@ -37,7 +47,10 @@
             <div class="summary-cards">
                 <div class="summary-card total-sets">
                     <div class="card-icon">
-                        <lightning-icon icon-name="utility:collection_variable" size="small"></lightning-icon>
+                        <lightning-icon
+                            icon-name="utility:collection_variable"
+                            size="small"
+                        ></lightning-icon>
                     </div>
                     <div class="card-content">
                         <span class="card-value">{summary.totalSets}</span>
@@ -56,7 +69,10 @@
                 <template for:each={summary.setsByObject} for:item="objCount">
                     <div key={objCount.objectType} class="summary-card object-count">
                         <div class="card-icon">
-                            <lightning-icon icon-name="utility:sobject" size="small"></lightning-icon>
+                            <lightning-icon
+                                icon-name="utility:sobject"
+                                size="small"
+                            ></lightning-icon>
                         </div>
                         <div class="card-content">
                             <span class="card-value">{objCount.count}</span>
@@ -79,7 +95,8 @@
                         options={objectTypeOptions}
                         onchange={handleObjectTypeChange}
                         variant="label-hidden"
-                        class="filter-combo">
+                        class="filter-combo"
+                    >
                     </lightning-combobox>
                 </div>
                 <div class="action-group">
@@ -89,7 +106,8 @@
                         variant="neutral"
                         onclick={handleRefresh}
                         disabled={refreshButtonDisabled}
-                        class="action-btn">
+                        class="action-btn"
+                    >
                     </lightning-button>
                     <lightning-button
                         label="Run Duplicate Scan"
@@ -97,7 +115,8 @@
                         variant="brand"
                         onclick={handleRunScan}
                         disabled={isRunScanDisabled}
-                        class="action-btn">
+                        class="action-btn"
+                    >
                     </lightning-button>
                     <lightning-button-icon
                         icon-name="utility:clock"
@@ -105,11 +124,12 @@
                         alternative-text="Schedule settings"
                         onclick={handleToggleSchedulePanel}
                         class="schedule-btn"
-                        title="Schedule daily scan">
+                        title="Schedule daily scan"
+                    >
                     </lightning-button-icon>
                 </div>
             </div>
-            
+
             <!-- Schedule Panel -->
             <template if:true={showSchedulePanel}>
                 <div class="schedule-panel">
@@ -124,17 +144,26 @@
                         <div class="schedule-status">
                             <template if:true={hasActiveSchedule}>
                                 <div class="schedule-active">
-                                    <lightning-icon icon-name="utility:success" variant="success" size="x-small"></lightning-icon>
-                                    <span>Scheduled daily at <strong>{activeScheduleTime}</strong></span>
+                                    <lightning-icon
+                                        icon-name="utility:success"
+                                        variant="success"
+                                        size="x-small"
+                                    ></lightning-icon>
+                                    <span
+                                        >Scheduled daily at
+                                        <strong>{activeScheduleTime}</strong></span
+                                    >
                                     <template if:true={nextFireTime}>
-                                        <span class="next-run">Next run: 
-                                            <lightning-formatted-date-time 
+                                        <span class="next-run"
+                                            >Next run:
+                                            <lightning-formatted-date-time
                                                 value={nextFireTime}
-                                                year="numeric" 
-                                                month="short" 
+                                                year="numeric"
+                                                month="short"
                                                 day="2-digit"
                                                 hour="2-digit"
-                                                minute="2-digit">
+                                                minute="2-digit"
+                                            >
                                             </lightning-formatted-date-time>
                                         </span>
                                     </template>
@@ -142,7 +171,10 @@
                             </template>
                             <template if:false={hasActiveSchedule}>
                                 <div class="schedule-inactive">
-                                    <lightning-icon icon-name="utility:info" size="x-small"></lightning-icon>
+                                    <lightning-icon
+                                        icon-name="utility:info"
+                                        size="x-small"
+                                    ></lightning-icon>
                                     <span>No schedule configured for {selectedObjectType}</span>
                                 </div>
                             </template>
@@ -154,7 +186,8 @@
                                 value={scheduleTime}
                                 onchange={handleScheduleTimeChange}
                                 disabled={isScheduleDisabled}
-                                class="schedule-time-input">
+                                class="schedule-time-input"
+                            >
                             </lightning-input>
                             <template if:true={hasActiveSchedule}>
                                 <lightning-button
@@ -162,14 +195,16 @@
                                     variant="brand"
                                     onclick={handleScheduleJob}
                                     disabled={isScheduleDisabled}
-                                    class="schedule-action-btn">
+                                    class="schedule-action-btn"
+                                >
                                 </lightning-button>
                                 <lightning-button
                                     label="Cancel Schedule"
                                     variant="destructive-text"
                                     onclick={handleUnscheduleJob}
                                     disabled={isScheduleDisabled}
-                                    class="schedule-action-btn">
+                                    class="schedule-action-btn"
+                                >
                                 </lightning-button>
                             </template>
                             <template if:false={hasActiveSchedule}>
@@ -178,7 +213,8 @@
                                     variant="brand"
                                     onclick={handleScheduleJob}
                                     disabled={isScheduleDisabled}
-                                    class="schedule-action-btn">
+                                    class="schedule-action-btn"
+                                >
                                 </lightning-button>
                             </template>
                         </div>
@@ -198,9 +234,17 @@
         <!-- Error State -->
         <template if:true={error}>
             <div class="error-container">
-                <lightning-icon icon-name="utility:error" variant="error" size="large"></lightning-icon>
+                <lightning-icon
+                    icon-name="utility:error"
+                    variant="error"
+                    size="large"
+                ></lightning-icon>
                 <p class="error-text">{error}</p>
-                <lightning-button label="Try Again" onclick={handleRefresh} variant="neutral"></lightning-button>
+                <lightning-button
+                    label="Try Again"
+                    onclick={handleRefresh}
+                    variant="neutral"
+                ></lightning-button>
             </div>
         </template>
 
@@ -212,12 +256,13 @@
                 </div>
                 <h2>No Duplicates Found</h2>
                 <p>Great news! There are no duplicate records to show.</p>
-                <lightning-button 
-                    label="Run Duplicate Scan" 
+                <lightning-button
+                    label="Run Duplicate Scan"
                     icon-name="utility:scan"
                     variant="brand"
                     onclick={handleRunScan}
-                    disabled={isRunScanDisabled}>
+                    disabled={isRunScanDisabled}
+                >
                 </lightning-button>
             </div>
         </template>
@@ -228,10 +273,15 @@
                 <div class="section-header">
                     <h2>Duplicate Sets ({totalCount})</h2>
                 </div>
-                
+
                 <div class="duplicate-sets-grid">
                     <template for:each={duplicateSets} for:item="dupSet">
-                        <div key={dupSet.id} class="duplicate-set-card" onclick={handleSetClick} data-id={dupSet.id}>
+                        <div
+                            key={dupSet.id}
+                            class="duplicate-set-card"
+                            onclick={handleSetClick}
+                            data-id={dupSet.id}
+                        >
                             <div class="set-card-header">
                                 <div class="set-badge" data-object={dupSet.objectType}>
                                     {dupSet.objectType}
@@ -244,37 +294,43 @@
                             <div class="set-card-body">
                                 <div class="set-name">{dupSet.name}</div>
                                 <div class="set-rule">
-                                    <lightning-icon icon-name="utility:rules" size="xx-small"></lightning-icon>
+                                    <lightning-icon
+                                        icon-name="utility:rules"
+                                        size="xx-small"
+                                    ></lightning-icon>
                                     <span>{dupSet.ruleName}</span>
                                 </div>
                             </div>
                             <div class="set-card-footer">
                                 <span class="set-date">
-                                    <lightning-formatted-date-time 
-                                        value={dupSet.createdDate} 
-                                        year="numeric" 
-                                        month="short" 
-                                        day="2-digit">
+                                    <lightning-formatted-date-time
+                                        value={dupSet.createdDate}
+                                        year="numeric"
+                                        month="short"
+                                        day="2-digit"
+                                    >
                                     </lightning-formatted-date-time>
                                 </span>
                                 <div class="set-card-actions">
-                                    <lightning-button-icon 
+                                    <lightning-button-icon
                                         icon-name="utility:merge"
                                         variant="bare"
                                         alternative-text="Merge records"
                                         onclick={handleMergeClick}
                                         data-id={dupSet.id}
                                         class="merge-btn"
-                                        title="Merge duplicates">
+                                        title="Merge duplicates"
+                                    >
                                     </lightning-button-icon>
-                                    <lightning-button-icon 
+                                    <lightning-button-icon
                                         icon-name="utility:delete"
                                         variant="bare"
                                         alternative-text="Delete set"
                                         onclick={handleDeleteSet}
                                         data-id={dupSet.id}
                                         class="delete-btn"
-                                        title="Delete set">
+                                        title="Delete set"
+                                    >
                                     </lightning-button-icon>
                                 </div>
                             </div>
@@ -285,21 +341,23 @@
                 <!-- Pagination -->
                 <template if:true={showPagination}>
                     <div class="pagination">
-                        <lightning-button 
-                            label="Previous" 
+                        <lightning-button
+                            label="Previous"
                             icon-name="utility:chevronleft"
                             onclick={handlePrevPage}
                             disabled={isPrevDisabled}
-                            class="page-btn">
+                            class="page-btn"
+                        >
                         </lightning-button>
                         <span class="page-info">Page {currentPage} of {totalPages}</span>
-                        <lightning-button 
-                            label="Next" 
+                        <lightning-button
+                            label="Next"
                             icon-name="utility:chevronright"
                             icon-position="right"
                             onclick={handleNextPage}
                             disabled={isNextDisabled}
-                            class="page-btn">
+                            class="page-btn"
+                        >
                         </lightning-button>
                     </div>
                 </template>
@@ -311,20 +369,34 @@
     <template if:true={showDetailModal}>
         <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
             <div class="slds-modal__container">
-                <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" onclick={closeDetailModal}>
-                    <lightning-icon icon-name="utility:close" size="small" variant="inverse"></lightning-icon>
+                <button
+                    class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                    onclick={closeDetailModal}
+                >
+                    <lightning-icon
+                        icon-name="utility:close"
+                        size="small"
+                        variant="inverse"
+                    ></lightning-icon>
                     <span class="slds-assistive-text">Close</span>
                 </button>
                 <div class="slds-modal__header modal-header">
                     <h2 class="slds-modal__title">
-                        <lightning-icon icon-name="standard:record_lookup" size="small" class="modal-title-icon"></lightning-icon>
+                        <lightning-icon
+                            icon-name="standard:record_lookup"
+                            size="small"
+                            class="modal-title-icon"
+                        ></lightning-icon>
                         Duplicate Set Details
                     </h2>
                 </div>
                 <div class="slds-modal__content modal-content" id="modal-content">
                     <template if:true={isLoadingItems}>
                         <div class="modal-loading">
-                            <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+                            <lightning-spinner
+                                alternative-text="Loading"
+                                size="small"
+                            ></lightning-spinner>
                         </div>
                     </template>
                     <template if:false={isLoadingItems}>
@@ -332,7 +404,10 @@
                             <template for:each={selectedSetItems} for:item="item">
                                 <div key={item.id} class="item-row">
                                     <div class="item-icon">
-                                        <lightning-icon icon-name="standard:contact" size="small"></lightning-icon>
+                                        <lightning-icon
+                                            icon-name="standard:contact"
+                                            size="small"
+                                        ></lightning-icon>
                                     </div>
                                     <div class="item-info">
                                         <a href={item.recordUrl} target="_blank" class="item-name">
@@ -341,22 +416,24 @@
                                         <span class="item-id">{item.recordId}</span>
                                     </div>
                                     <div class="item-date">
-                                        <lightning-formatted-date-time 
-                                            value={item.createdDate} 
-                                            year="numeric" 
-                                            month="short" 
+                                        <lightning-formatted-date-time
+                                            value={item.createdDate}
+                                            year="numeric"
+                                            month="short"
                                             day="2-digit"
                                             hour="2-digit"
-                                            minute="2-digit">
+                                            minute="2-digit"
+                                        >
                                         </lightning-formatted-date-time>
                                     </div>
                                     <div class="item-actions">
-                                        <lightning-button-icon 
+                                        <lightning-button-icon
                                             icon-name="utility:new_window"
                                             variant="bare"
                                             alternative-text="Open record"
                                             onclick={handleOpenRecord}
-                                            data-url={item.recordUrl}>
+                                            data-url={item.recordUrl}
+                                        >
                                         </lightning-button-icon>
                                     </div>
                                 </div>
@@ -377,7 +454,8 @@
         <c-duplicate-merge-modal
             duplicate-set-id={mergeSetId}
             onclose={closeMergeModal}
-            onmergecomplete={handleMergeComplete}>
+            onmergecomplete={handleMergeComplete}
+        >
         </c-duplicate-merge-modal>
     </template>
 </template>

@@ -471,33 +471,32 @@
         width: 100vw;
         max-width: 100vw;
     }
-    
+
     .filter-row {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .filter-toggles {
         justify-content: center;
     }
-    
+
     .filter-stats {
         flex-wrap: wrap;
         justify-content: center;
     }
-    
+
     .master-card {
         min-width: 100%;
     }
-    
+
     .merge-modal-footer {
         flex-direction: column;
         gap: 12px;
     }
-    
+
     .footer-actions {
         width: 100%;
         justify-content: flex-end;
     }
 }
-

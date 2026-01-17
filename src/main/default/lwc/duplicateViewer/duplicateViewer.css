@@ -28,7 +28,11 @@
 
 /* Container */
 .container {
-    font-family: 'Salesforce Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family:
+        'Salesforce Sans',
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
     padding: 24px;
     min-height: 100vh;
     background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%);
@@ -390,15 +394,15 @@
     color: white;
 }
 
-.set-badge[data-object="Contact"] {
+.set-badge[data-object='Contact'] {
     background: #0b827c;
 }
 
-.set-badge[data-object="Account"] {
+.set-badge[data-object='Account'] {
     background: #7c52ff;
 }
 
-.set-badge[data-object="Lead"] {
+.set-badge[data-object='Lead'] {
     background: #f28b00;
 }
 
@@ -733,16 +737,17 @@
 
 .schedule-action-btn {
     flex-shrink: 0;
-}@media (max-width: 768px) {
+}
+@media (max-width: 768px) {
     .schedule-controls {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .schedule-time-input {
         width: 100%;
     }
-    
+
     .next-run {
         width: 100%;
         margin-left: 0;
