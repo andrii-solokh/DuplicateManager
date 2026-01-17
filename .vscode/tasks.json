@@ -1,0 +1,126 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "devHubAlias",
+      "type": "promptString",
+      "description": "Enter your DevHub alias (e.g., my-devhub)",
+      "default": "my-devhub"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "1. Create Scratch Org",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "scratch:create",
+        "--",
+        "--alias",
+        "${config:duplicateManager.scratchOrg.alias}",
+        "--target-dev-hub",
+        "${input:devHubAlias}",
+        "--duration-days",
+        "${config:duplicateManager.scratchOrg.durationDays}"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "2. Push Source",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "source:deploy"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "3. Assign Permission Set",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "permset:assign"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "4. Load Test Data",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "data:load"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "5. Open Org",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "org:open"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Setup Dev Org (All Steps)",
+      "dependsOn": [
+        "1. Create Scratch Org",
+        "2. Push Source",
+        "3. Assign Permission Set",
+        "4. Load Test Data",
+        "5. Open Org"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Test: Run Apex Tests",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "test:apex"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Test: Run LWC Jest Tests",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "test:unit"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Test: Run All Tests",
+      "dependsOn": ["Test: Run Apex Tests", "Test: Run LWC Jest Tests"],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    }
+  ]
+}
