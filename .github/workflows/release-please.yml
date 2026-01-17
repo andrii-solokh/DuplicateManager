@@ -33,6 +33,8 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ needs.release-please.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,3 +63,82 @@ jobs:
           git add sfdx-project.json
           git commit -m "chore: update sfdx-project.json to v${{ needs.release-please.outputs.version }}" || echo "No changes to commit"
           git push
+
+  # Create beta package after version is updated
+  create-beta-package:
+    needs: [release-please, update-sfdx-version]
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with updated version)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pull latest changes
+        run: git pull origin main
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Authenticate DevHub
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
+          rm auth.txt
+
+      - name: Verify version in sfdx-project.json
+        run: |
+          echo "Expected version: ${{ needs.release-please.outputs.version }}"
+          echo "sfdx-project.json contents:"
+          cat sfdx-project.json
+          CURRENT_VERSION=$(jq -r '.packageDirectories[0].versionNumber' sfdx-project.json)
+          echo "Current version in file: $CURRENT_VERSION"
+
+      - name: Create Package Version (Beta)
+        id: create_version
+        run: |
+          set +e
+          VERSION_OUTPUT=$(sf package version create \
+            --package DuplicateManager \
+            --installation-key-bypass \
+            --wait 20 \
+            --code-coverage \
+            --json 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          echo "SF Output: $VERSION_OUTPUT"
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "::error::Package version creation failed with exit code $EXIT_CODE"
+            echo "$VERSION_OUTPUT" | jq '.' 2>/dev/null || echo "$VERSION_OUTPUT"
+            exit $EXIT_CODE
+          fi
+
+          VERSION_ID=$(echo $VERSION_OUTPUT | jq -r '.result.SubscriberPackageVersionId')
+          VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.Version')
+
+          echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+          echo "::notice::Beta package version created: $VERSION_ID ($VERSION_NUMBER)"
+
+      - name: Add package info to release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: '${{ needs.release-please.outputs.tag_name }}'
+            });
+
+            const currentBody = release.data.body || '';
+            const packageInfo = `\n\n---\n\n## 📦 Salesforce Package\n\n**Version:** \`${{ steps.create_version.outputs.version_number }}\`\n**Package ID:** \`${{ steps.create_version.outputs.version_id }}\`\n\n### Install in sandbox:\n\`\`\`bash\nsf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10\n\`\`\`\n\n> ⚠️ This is a beta version. Use the Release Package workflow to promote for production.`;
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              body: currentBody + packageInfo
+            });

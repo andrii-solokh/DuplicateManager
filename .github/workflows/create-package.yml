@@ -1,12 +1,16 @@
-name: Create Package Version
+name: Create Package Version (Manual)
+
+# This workflow is for manual beta creation only.
+# Automatic beta creation happens in release-please.yml after a release.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "sfdx-project.json"
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "Skip Apex tests (not recommended)"
+        required: false
+        default: "false"
+        type: boolean
 
 permissions:
   contents: write
@@ -30,15 +34,27 @@ jobs:
           sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
           rm auth.txt
 
+      - name: Show current version
+        run: |
+          echo "Current sfdx-project.json:"
+          cat sfdx-project.json
+          echo ""
+          echo "Version: $(jq -r '.packageDirectories[0].versionNumber' sfdx-project.json)"
+
       - name: Create Package Version (Beta)
         id: create_version
         run: |
+          COVERAGE_FLAG=""
+          if [ "${{ inputs.skip_tests }}" != "true" ]; then
+            COVERAGE_FLAG="--code-coverage"
+          fi
+
           set +e
           VERSION_OUTPUT=$(sf package version create \
             --package DuplicateManager \
             --installation-key-bypass \
             --wait 20 \
-            --code-coverage \
+            $COVERAGE_FLAG \
             --json 2>&1)
           EXIT_CODE=$?
           set -e
@@ -58,13 +74,16 @@ jobs:
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
           echo "::notice::Beta package version created: $VERSION_ID ($VERSION_NUMBER)"
 
-      - name: Comment on Commit
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: `📦 **Beta Package Created**\n\nVersion: \`${{ steps.create_version.outputs.version_number }}\`\nPackage ID: \`${{ steps.create_version.outputs.version_id }}\`\n\n**Install in sandbox:**\n\`\`\`bash\nsf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10\n\`\`\`\n\n> ⚠️ This is a beta version and can only be installed in sandboxes. Create a GitHub Release to promote for production.`
-            })
+      - name: Summary
+        run: |
+          echo "## 📦 Beta Package Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.create_version.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package ID:** \`${{ steps.create_version.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install in sandbox:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "sf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ⚠️ This is a beta version and can only be installed in sandboxes." >> $GITHUB_STEP_SUMMARY
