@@ -13,11 +13,6 @@ on:
         required: false
         default: false
         type: boolean
-      skip_version_bump:
-        description: "Skip version bump (use current version)"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -39,7 +34,7 @@ jobs:
 
       - name: Determine version bump type
         id: bump_type
-        if: github.event_name != 'workflow_dispatch' || inputs.skip_version_bump != true
+        if: github.event_name != 'workflow_dispatch'
         run: |
           COMMIT_MSG="${{ github.event.head_commit.message }}"
           echo "Commit message: $COMMIT_MSG"
@@ -63,7 +58,7 @@ jobs:
 
       - name: Bump version in sfdx-project.json
         id: bump_version
-        if: steps.bump_type.outputs.bump != 'none' && (github.event_name != 'workflow_dispatch' || inputs.skip_version_bump != true)
+        if: github.event_name != 'workflow_dispatch' && steps.bump_type.outputs.bump != 'none'
         run: |
           # Get current version
           CURRENT_VERSION=$(jq -r '.packageDirectories[0].versionNumber' sfdx-project.json | sed 's/.NEXT$//')
@@ -164,6 +159,7 @@ jobs:
           echo "::notice::Beta package version created: $VERSION_ID ($VERSION_NUMBER)"
 
       - name: Comment on Commit
+        if: github.event_name != 'workflow_dispatch'
         uses: actions/github-script@v7
         with:
           script: |
@@ -176,3 +172,15 @@ jobs:
               commit_sha: context.sha,
               body: `📦 **Beta Package Created**\n${bumpInfo}\nVersion: \`${{ steps.create_version.outputs.version_number }}\`\nPackage ID: \`${{ steps.create_version.outputs.version_id }}\`\n\n**Install in sandbox:**\n\`\`\`bash\nsf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10\n\`\`\`\n\n> ⚠️ This is a beta version and can only be installed in sandboxes. Merge the Release PR to promote for production.`
             })
+
+      - name: Summary
+        run: |
+          echo "## 📦 Beta Package Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.create_version.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package ID:** \`${{ steps.create_version.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install in sandbox:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "sf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
