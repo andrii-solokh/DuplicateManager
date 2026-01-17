@@ -1,13 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>59.0</apiVersion>
-    <isExposed>true</isExposed>
-    <masterLabel>Duplicate Viewer</masterLabel>
-    <description>A modern dashboard for viewing and managing duplicate records across your organization.</description>
-    <targets>
-        <target>lightning__AppPage</target>
-        <target>lightning__HomePage</target>
-        <target>lightning__Tab</target>
-        <target>lightning__UrlAddressable</target>
-    </targets>
+  <apiVersion>59.0</apiVersion>
+  <isExposed>true</isExposed>
+  <masterLabel>Duplicate Viewer</masterLabel>
+  <description>A modern dashboard for viewing and managing duplicate records across your organization.</description>
+  <targets>
+    <target>lightning__AppPage</target>
+    <target>lightning__HomePage</target>
+    <target>lightning__Tab</target>
+    <target>lightning__UrlAddressable</target>
+  </targets>
 </LightningComponentBundle>

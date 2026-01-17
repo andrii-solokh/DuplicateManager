@@ -1,53 +1,53 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <label>Duplicate Manager</label>
-    <description>Provides access to duplicate management functionality including viewing, managing, and running duplicate scans.</description>
-    <hasActivationRequired>false</hasActivationRequired>
-    <license>Salesforce</license>
-    
-    <!-- Custom Tab Access -->
-    <tabSettings>
-        <tab>Duplicate_Manager</tab>
-        <visibility>Visible</visibility>
-    </tabSettings>
-    
-    <!-- Apex Class Access -->
-    <classAccesses>
-        <apexClass>DuplicateViewerController</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
-        <apexClass>DuplicateMergeController</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
-        <apexClass>DuplicateScannerJob</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
-        <apexClass>DuplicateScannerScheduler</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    
-    <!-- DuplicateRecordSet Object Permissions -->
-    <objectPermissions>
-        <allowCreate>true</allowCreate>
-        <allowDelete>true</allowDelete>
-        <allowEdit>true</allowEdit>
-        <allowRead>true</allowRead>
-        <modifyAllRecords>true</modifyAllRecords>
-        <object>DuplicateRecordSet</object>
-        <viewAllRecords>true</viewAllRecords>
-    </objectPermissions>
-    
-    <!-- DuplicateRecordItem Object Permissions -->
-    <objectPermissions>
-        <allowCreate>true</allowCreate>
-        <allowDelete>true</allowDelete>
-        <allowEdit>true</allowEdit>
-        <allowRead>true</allowRead>
-        <modifyAllRecords>true</modifyAllRecords>
-        <object>DuplicateRecordItem</object>
-        <viewAllRecords>true</viewAllRecords>
-    </objectPermissions>
+  <label>Duplicate Manager</label>
+  <description>Provides access to duplicate management functionality including viewing, managing, and running duplicate scans.</description>
+  <hasActivationRequired>false</hasActivationRequired>
+  <license>Salesforce</license>
+
+  <!-- Custom Tab Access -->
+  <tabSettings>
+    <tab>Duplicate_Manager</tab>
+    <visibility>Visible</visibility>
+  </tabSettings>
+
+  <!-- Apex Class Access -->
+  <classAccesses>
+    <apexClass>DuplicateViewerController</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <classAccesses>
+    <apexClass>DuplicateMergeController</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <classAccesses>
+    <apexClass>DuplicateScannerJob</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <classAccesses>
+    <apexClass>DuplicateScannerScheduler</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+
+  <!-- DuplicateRecordSet Object Permissions -->
+  <objectPermissions>
+    <allowCreate>true</allowCreate>
+    <allowDelete>true</allowDelete>
+    <allowEdit>true</allowEdit>
+    <allowRead>true</allowRead>
+    <modifyAllRecords>true</modifyAllRecords>
+    <object>DuplicateRecordSet</object>
+    <viewAllRecords>true</viewAllRecords>
+  </objectPermissions>
+
+  <!-- DuplicateRecordItem Object Permissions -->
+  <objectPermissions>
+    <allowCreate>true</allowCreate>
+    <allowDelete>true</allowDelete>
+    <allowEdit>true</allowEdit>
+    <allowRead>true</allowRead>
+    <modifyAllRecords>true</modifyAllRecords>
+    <object>DuplicateRecordItem</object>
+    <viewAllRecords>true</viewAllRecords>
+  </objectPermissions>
 </PermissionSet>

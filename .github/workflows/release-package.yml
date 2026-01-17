@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version_id:
-        description: 'Package Version ID to promote (04t...)'
+        description: "Package Version ID to promote (04t...)"
         required: true
 
 jobs:

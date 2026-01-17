@@ -34,5 +34,8 @@
     "eslint-plugin-jest": "^28.8.3",
     "prettier": "^3.3.3",
     "prettier-plugin-apex": "^2.1.4"
+  },
+  "dependencies": {
+    "@prettier/plugin-xml": "^3.4.2"
   }
 }

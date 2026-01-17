@@ -1,293 +1,287 @@
 <template>
-    <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
-        <div class="slds-modal__container merge-modal-container">
-            <!-- Close Button -->
-            <button
-                class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+  <section
+    role="dialog"
+    tabindex="-1"
+    class="slds-modal slds-fade-in-open slds-modal_large"
+  >
+    <div class="slds-modal__container merge-modal-container">
+      <!-- Close Button -->
+      <button
+        class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+        onclick={handleClose}
+      >
+        <lightning-icon
+          icon-name="utility:close"
+          size="small"
+          variant="inverse"
+        ></lightning-icon>
+        <span class="slds-assistive-text">Close</span>
+      </button>
+
+      <!-- Header -->
+      <div class="slds-modal__header merge-modal-header">
+        <h2 class="slds-modal__title">
+          <lightning-icon
+            icon-name="utility:merge"
+            size="small"
+            class="header-icon"
+          ></lightning-icon>
+          Merge Duplicate Records
+        </h2>
+        <p class="header-subtitle">
+          Select the master record and choose values for each field
+        </p>
+      </div>
+
+      <!-- Content -->
+      <div class="slds-modal__content merge-modal-content" id="modal-content">
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+          <div class="loading-container">
+            <lightning-spinner
+              alternative-text="Loading"
+              size="medium"
+            ></lightning-spinner>
+            <p class="loading-text">Loading record comparison...</p>
+          </div>
+        </template>
+
+        <!-- Error State -->
+        <template if:true={error}>
+          <div class="error-container">
+            <lightning-icon
+              icon-name="utility:error"
+              variant="error"
+              size="large"
+            ></lightning-icon>
+            <p class="error-text">{error}</p>
+          </div>
+        </template>
+
+        <!-- Success State -->
+        <template if:true={mergeSuccess}>
+          <div class="success-container">
+            <div class="success-icon-wrapper">
+              <lightning-icon
+                icon-name="utility:success"
+                variant="success"
+                size="large"
+              ></lightning-icon>
+            </div>
+            <h2 class="success-title">Records Merged Successfully!</h2>
+            <p class="success-message">{mergeResult.message}</p>
+            <div class="success-actions">
+              <lightning-button
+                label="View Merged Record"
+                variant="brand"
+                icon-name="utility:new_window"
+                onclick={handleNavigateToRecord}
+                class="view-record-btn"
+              >
+              </lightning-button>
+              <lightning-button
+                label="Close"
+                variant="neutral"
                 onclick={handleClose}
-            >
-                <lightning-icon
-                    icon-name="utility:close"
-                    size="small"
-                    variant="inverse"
-                ></lightning-icon>
-                <span class="slds-assistive-text">Close</span>
-            </button>
-
-            <!-- Header -->
-            <div class="slds-modal__header merge-modal-header">
-                <h2 class="slds-modal__title">
-                    <lightning-icon
-                        icon-name="utility:merge"
-                        size="small"
-                        class="header-icon"
-                    ></lightning-icon>
-                    Merge Duplicate Records
-                </h2>
-                <p class="header-subtitle">
-                    Select the master record and choose values for each field
-                </p>
+              >
+              </lightning-button>
             </div>
+          </div>
+        </template>
 
-            <!-- Content -->
-            <div class="slds-modal__content merge-modal-content" id="modal-content">
-                <!-- Loading State -->
-                <template if:true={isLoading}>
-                    <div class="loading-container">
-                        <lightning-spinner
-                            alternative-text="Loading"
-                            size="medium"
-                        ></lightning-spinner>
-                        <p class="loading-text">Loading record comparison...</p>
-                    </div>
-                </template>
-
-                <!-- Error State -->
-                <template if:true={error}>
-                    <div class="error-container">
-                        <lightning-icon
-                            icon-name="utility:error"
-                            variant="error"
-                            size="large"
-                        ></lightning-icon>
-                        <p class="error-text">{error}</p>
-                    </div>
-                </template>
-
-                <!-- Success State -->
-                <template if:true={mergeSuccess}>
-                    <div class="success-container">
-                        <div class="success-icon-wrapper">
-                            <lightning-icon
-                                icon-name="utility:success"
-                                variant="success"
-                                size="large"
-                            ></lightning-icon>
-                        </div>
-                        <h2 class="success-title">Records Merged Successfully!</h2>
-                        <p class="success-message">{mergeResult.message}</p>
-                        <div class="success-actions">
-                            <lightning-button
-                                label="View Merged Record"
-                                variant="brand"
-                                icon-name="utility:new_window"
-                                onclick={handleNavigateToRecord}
-                                class="view-record-btn"
-                            >
-                            </lightning-button>
-                            <lightning-button label="Close" variant="neutral" onclick={handleClose}>
-                            </lightning-button>
-                        </div>
-                    </div>
-                </template>
-
-                <!-- Comparison View -->
-                <template if:false={isLoading}>
-                    <template if:false={error}>
-                        <template if:false={mergeSuccess}>
-                            <!-- Master Record Selection -->
-                            <div class="master-selection-section">
-                                <div class="section-title">
-                                    <lightning-icon
-                                        icon-name="utility:record"
-                                        size="x-small"
-                                    ></lightning-icon>
-                                    <span>Select Master Record</span>
-                                </div>
-                                <div class="master-cards">
-                                    <template for:each={records} for:item="record">
-                                        <div
-                                            key={record.recordId}
-                                            class={record.cardClass}
-                                            onclick={handleMasterSelect}
-                                            data-id={record.recordId}
-                                        >
-                                            <div class="master-card-content">
-                                                <lightning-icon
-                                                    icon-name="utility:check"
-                                                    size="x-small"
-                                                    class="master-check"
-                                                ></lightning-icon>
-                                                <span class="master-name">{record.recordName}</span>
-                                            </div>
-                                            <span class="master-id">{record.recordId}</span>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-
-                            <!-- Filter Controls -->
-                            <div class="filter-section">
-                                <div class="filter-row">
-                                    <lightning-input
-                                        type="search"
-                                        label="Search fields"
-                                        placeholder="Search by field name or value..."
-                                        value={searchTerm}
-                                        onchange={handleSearchChange}
-                                        variant="label-hidden"
-                                        class="search-input"
-                                    >
-                                    </lightning-input>
-                                    <div class="filter-toggles">
-                                        <lightning-button-group>
-                                            <lightning-button
-                                                label="Differences"
-                                                variant={differencesButtonVariant}
-                                                onclick={handleShowDifferences}
-                                                icon-name="utility:warning"
-                                            >
-                                            </lightning-button>
-                                            <lightning-button
-                                                label="Same"
-                                                variant={sameButtonVariant}
-                                                onclick={handleShowSame}
-                                                icon-name="utility:check"
-                                            >
-                                            </lightning-button>
-                                            <lightning-button
-                                                label="Empty"
-                                                variant={emptyButtonVariant}
-                                                onclick={handleShowEmpty}
-                                                icon-name="utility:dash"
-                                            >
-                                            </lightning-button>
-                                        </lightning-button-group>
-                                    </div>
-                                </div>
-                                <div class="filter-stats">
-                                    <span class="stat-item differences">
-                                        <strong>{differenceCount}</strong> differences
-                                    </span>
-                                    <span class="stat-item same">
-                                        <strong>{sameCount}</strong> same
-                                    </span>
-                                    <span class="stat-item empty">
-                                        <strong>{emptyCount}</strong> empty
-                                    </span>
-                                    <span class="stat-item total">
-                                        Showing <strong>{visibleFieldCount}</strong> of
-                                        <strong>{totalFieldCount}</strong> fields
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Fields Comparison Table -->
-                            <div class="comparison-table-container">
-                                <table class="comparison-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="field-name-col">Field</th>
-                                            <template for:each={records} for:item="record">
-                                                <th key={record.recordId} class="value-col">
-                                                    <div class="record-header">
-                                                        <span class="record-name"
-                                                            >{record.recordName}</span
-                                                        >
-                                                        <template if:true={record.isMaster}>
-                                                            <span class="master-badge">Master</span>
-                                                        </template>
-                                                    </div>
-                                                </th>
-                                            </template>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <template for:each={filteredFields} for:item="field">
-                                            <tr key={field.apiName} class={field.rowClass}>
-                                                <td class="field-name-col">
-                                                    <div class="field-label">
-                                                        <span class="field-name"
-                                                            >{field.label}</span
-                                                        >
-                                                        <template if:true={field.isRequired}>
-                                                            <span class="required-badge"
-                                                                >Required</span
-                                                            >
-                                                        </template>
-                                                    </div>
-                                                    <span class="field-api-name"
-                                                        >{field.apiName}</span
-                                                    >
-                                                </td>
-                                                <template
-                                                    for:each={field.values}
-                                                    for:item="fieldValue"
-                                                >
-                                                    <td
-                                                        key={fieldValue.recordId}
-                                                        class={fieldValue.cellClass}
-                                                        onclick={handleValueSelect}
-                                                        data-field={field.apiName}
-                                                        data-record={fieldValue.recordId}
-                                                    >
-                                                        <div class="cell-content">
-                                                            <template
-                                                                if:true={fieldValue.isSelected}
-                                                            >
-                                                                <lightning-icon
-                                                                    icon-name="utility:check"
-                                                                    size="xx-small"
-                                                                    class="selected-icon"
-                                                                >
-                                                                </lightning-icon>
-                                                            </template>
-                                                            <span class="cell-value"
-                                                                >{fieldValue.displayValue}</span
-                                                            >
-                                                            <template if:true={fieldValue.isEmpty}>
-                                                                <span class="empty-value"
-                                                                    >(empty)</span
-                                                                >
-                                                            </template>
-                                                        </div>
-                                                    </td>
-                                                </template>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-
-                                <template if:true={noFieldsVisible}>
-                                    <div class="no-fields-message">
-                                        <lightning-icon
-                                            icon-name="utility:info"
-                                            size="small"
-                                        ></lightning-icon>
-                                        <span>No fields match your current filters.</span>
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
-                    </template>
-                </template>
-            </div>
-
-            <!-- Footer (hidden on success) -->
+        <!-- Comparison View -->
+        <template if:false={isLoading}>
+          <template if:false={error}>
             <template if:false={mergeSuccess}>
-                <div class="slds-modal__footer merge-modal-footer">
-                    <div class="footer-info">
-                        <template if:true={masterRecordId}>
-                            <span class="merge-summary">
-                                Merge into: <strong>{masterRecordName}</strong>
-                                ({selectedFieldCount} field selections)
-                            </span>
-                        </template>
-                    </div>
-                    <div class="footer-actions">
-                        <lightning-button label="Cancel" onclick={handleClose}> </lightning-button>
-                        <lightning-button
-                            label={mergeButtonLabel}
-                            variant="brand"
-                            onclick={handleMerge}
-                            disabled={isMergeDisabled}
-                            class="merge-btn"
-                        >
-                        </lightning-button>
-                    </div>
+              <!-- Master Record Selection -->
+              <div class="master-selection-section">
+                <div class="section-title">
+                  <lightning-icon
+                    icon-name="utility:record"
+                    size="x-small"
+                  ></lightning-icon>
+                  <span>Select Master Record</span>
                 </div>
+                <div class="master-cards">
+                  <template for:each={records} for:item="record">
+                    <div
+                      key={record.recordId}
+                      class={record.cardClass}
+                      onclick={handleMasterSelect}
+                      data-id={record.recordId}
+                    >
+                      <div class="master-card-content">
+                        <lightning-icon
+                          icon-name="utility:check"
+                          size="x-small"
+                          class="master-check"
+                        ></lightning-icon>
+                        <span class="master-name">{record.recordName}</span>
+                      </div>
+                      <span class="master-id">{record.recordId}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Filter Controls -->
+              <div class="filter-section">
+                <div class="filter-row">
+                  <lightning-input
+                    type="search"
+                    label="Search fields"
+                    placeholder="Search by field name or value..."
+                    value={searchTerm}
+                    onchange={handleSearchChange}
+                    variant="label-hidden"
+                    class="search-input"
+                  >
+                  </lightning-input>
+                  <div class="filter-toggles">
+                    <lightning-button-group>
+                      <lightning-button
+                        label="Differences"
+                        variant={differencesButtonVariant}
+                        onclick={handleShowDifferences}
+                        icon-name="utility:warning"
+                      >
+                      </lightning-button>
+                      <lightning-button
+                        label="Same"
+                        variant={sameButtonVariant}
+                        onclick={handleShowSame}
+                        icon-name="utility:check"
+                      >
+                      </lightning-button>
+                      <lightning-button
+                        label="Empty"
+                        variant={emptyButtonVariant}
+                        onclick={handleShowEmpty}
+                        icon-name="utility:dash"
+                      >
+                      </lightning-button>
+                    </lightning-button-group>
+                  </div>
+                </div>
+                <div class="filter-stats">
+                  <span class="stat-item differences">
+                    <strong>{differenceCount}</strong> differences
+                  </span>
+                  <span class="stat-item same">
+                    <strong>{sameCount}</strong> same
+                  </span>
+                  <span class="stat-item empty">
+                    <strong>{emptyCount}</strong> empty
+                  </span>
+                  <span class="stat-item total">
+                    Showing <strong>{visibleFieldCount}</strong> of
+                    <strong>{totalFieldCount}</strong> fields
+                  </span>
+                </div>
+              </div>
+
+              <!-- Fields Comparison Table -->
+              <div class="comparison-table-container">
+                <table class="comparison-table">
+                  <thead>
+                    <tr>
+                      <th class="field-name-col">Field</th>
+                      <template for:each={records} for:item="record">
+                        <th key={record.recordId} class="value-col">
+                          <div class="record-header">
+                            <span class="record-name">{record.recordName}</span>
+                            <template if:true={record.isMaster}>
+                              <span class="master-badge">Master</span>
+                            </template>
+                          </div>
+                        </th>
+                      </template>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template for:each={filteredFields} for:item="field">
+                      <tr key={field.apiName} class={field.rowClass}>
+                        <td class="field-name-col">
+                          <div class="field-label">
+                            <span class="field-name">{field.label}</span>
+                            <template if:true={field.isRequired}>
+                              <span class="required-badge">Required</span>
+                            </template>
+                          </div>
+                          <span class="field-api-name">{field.apiName}</span>
+                        </td>
+                        <template for:each={field.values} for:item="fieldValue">
+                          <td
+                            key={fieldValue.recordId}
+                            class={fieldValue.cellClass}
+                            onclick={handleValueSelect}
+                            data-field={field.apiName}
+                            data-record={fieldValue.recordId}
+                          >
+                            <div class="cell-content">
+                              <template if:true={fieldValue.isSelected}>
+                                <lightning-icon
+                                  icon-name="utility:check"
+                                  size="xx-small"
+                                  class="selected-icon"
+                                >
+                                </lightning-icon>
+                              </template>
+                              <span class="cell-value"
+                                >{fieldValue.displayValue}</span
+                              >
+                              <template if:true={fieldValue.isEmpty}>
+                                <span class="empty-value">(empty)</span>
+                              </template>
+                            </div>
+                          </td>
+                        </template>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+
+                <template if:true={noFieldsVisible}>
+                  <div class="no-fields-message">
+                    <lightning-icon
+                      icon-name="utility:info"
+                      size="small"
+                    ></lightning-icon>
+                    <span>No fields match your current filters.</span>
+                  </div>
+                </template>
+              </div>
             </template>
+          </template>
+        </template>
+      </div>
+
+      <!-- Footer (hidden on success) -->
+      <template if:false={mergeSuccess}>
+        <div class="slds-modal__footer merge-modal-footer">
+          <div class="footer-info">
+            <template if:true={masterRecordId}>
+              <span class="merge-summary">
+                Merge into: <strong>{masterRecordName}</strong>
+                ({selectedFieldCount} field selections)
+              </span>
+            </template>
+          </div>
+          <div class="footer-actions">
+            <lightning-button label="Cancel" onclick={handleClose}>
+            </lightning-button>
+            <lightning-button
+              label={mergeButtonLabel}
+              variant="brand"
+              onclick={handleMerge}
+              disabled={isMergeDisabled}
+              class="merge-btn"
+            >
+            </lightning-button>
+          </div>
         </div>
-    </section>
-    <div class="slds-backdrop slds-backdrop_open"></div>
+      </template>
+    </div>
+  </section>
+  <div class="slds-backdrop slds-backdrop_open"></div>
 </template>

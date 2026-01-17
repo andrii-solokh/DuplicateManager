@@ -217,17 +217,17 @@ System.assertEquals(expected, actual); // Old syntax
 ### Example LWC Test
 
 ```javascript
-import { createElement } from 'lwc';
-import DuplicateViewer from 'c/duplicateViewer';
-import getDuplicateSets from '@salesforce/apex/DuplicateViewerController.getDuplicateSets';
+import { createElement } from "lwc";
+import DuplicateViewer from "c/duplicateViewer";
+import getDuplicateSets from "@salesforce/apex/DuplicateViewerController.getDuplicateSets";
 
 jest.mock(
-  '@salesforce/apex/DuplicateViewerController.getDuplicateSets',
+  "@salesforce/apex/DuplicateViewerController.getDuplicateSets",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
 
-describe('c-duplicate-viewer', () => {
+describe("c-duplicate-viewer", () => {
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
@@ -235,13 +235,13 @@ describe('c-duplicate-viewer', () => {
     jest.clearAllMocks();
   });
 
-  it('displays loading spinner initially', () => {
-    const element = createElement('c-duplicate-viewer', {
+  it("displays loading spinner initially", () => {
+    const element = createElement("c-duplicate-viewer", {
       is: DuplicateViewer
     });
     document.body.appendChild(element);
 
-    const spinner = element.shadowRoot.querySelector('lightning-spinner');
+    const spinner = element.shadowRoot.querySelector("lightning-spinner");
     expect(spinner).not.toBeNull();
   });
 });
