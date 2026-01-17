@@ -30,12 +30,23 @@ jobs:
       - name: Create Package Version (Beta)
         id: create_version
         run: |
+          set +e
           VERSION_OUTPUT=$(sf package version create \
             --package DuplicateManager \
             --installation-key-bypass \
             --wait 20 \
             --code-coverage \
-            --json)
+            --json 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          echo "SF Output: $VERSION_OUTPUT"
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "::error::Package version creation failed with exit code $EXIT_CODE"
+            echo "$VERSION_OUTPUT" | jq '.' 2>/dev/null || echo "$VERSION_OUTPUT"
+            exit $EXIT_CODE
+          fi
           
           VERSION_ID=$(echo $VERSION_OUTPUT | jq -r '.result.SubscriberPackageVersionId')
           VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.Version')
