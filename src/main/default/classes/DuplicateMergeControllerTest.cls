@@ -1,7 +1,7 @@
 /**
  * @description Test class for DuplicateMergeController.
  *              Provides comprehensive coverage of all controller methods.
- * @author Generated for Teachiq
+ * @author Andrii Solokh
  * @since 2026
  * @group Duplicate Management
  */

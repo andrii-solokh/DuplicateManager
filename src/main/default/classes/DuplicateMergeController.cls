@@ -1,7 +1,7 @@
 /**
  * @description Controller for duplicate record merge functionality.
  *              Provides methods to compare records side-by-side and merge them.
- * @author Generated for Teachiq
+ * @author Andrii Solokh
  * @since 2026
  * @group Duplicate Management
  */

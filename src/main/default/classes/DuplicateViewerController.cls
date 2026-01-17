@@ -1,7 +1,7 @@
 /**
  * @description Controller for the Duplicate Viewer LWC component.
  *              Provides methods to query and manage duplicate record sets.
- * @author Generated for Teachiq
+ * @author Andrii Solokh
  * @since 2026
  * @group Duplicate Management
  */

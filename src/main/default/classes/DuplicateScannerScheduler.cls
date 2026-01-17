@@ -19,7 +19,7 @@
  * 5. Schedule multiple objects:
  *    DuplicateScannerScheduler.scheduleWeekly(new List<String>{'Contact', 'Account', 'Lead'});
  * 
- * @author Generated for Teachiq
+ * @author Andrii Solokh
  * @since 2026
  * @group Duplicate Management
  */

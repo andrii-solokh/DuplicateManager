@@ -8,7 +8,7 @@
  * - These tests focus on code coverage and error handling
  * - Full integration testing should be done in a sandbox with proper rule configuration
  * 
- * @author Generated for Teachiq
+ * @author Andrii Solokh
  * @since 2026
  * @group Duplicate Management
  */

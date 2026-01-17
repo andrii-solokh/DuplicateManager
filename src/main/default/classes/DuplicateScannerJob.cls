@@ -36,7 +36,7 @@
  * - This implementation uses batch processing and chained Queueables to handle large datasets.
  * - Configurable batch size allows tuning for specific org sizes and complexity.
  * 
- * @author Generated for Teachiq
+ * @author Andrii Solokh
  * @since 2026
  * @group Duplicate Management
  */
