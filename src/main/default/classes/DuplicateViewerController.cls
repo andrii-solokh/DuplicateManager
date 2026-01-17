@@ -224,6 +224,49 @@ public with sharing class DuplicateViewerController {
   }
 
   /**
+   * @description Aborts a running duplicate scanner job and all chained jobs.
+   * @param jobId The initial AsyncApexJob ID
+   */
+  @AuraEnabled
+  public static void abortJob(String jobId) {
+    try {
+      if (String.isBlank(jobId)) {
+        return;
+      }
+
+      // Get the initial job to find its start time
+      List<AsyncApexJob> initialJobs = [
+        SELECT Id, CreatedDate
+        FROM AsyncApexJob
+        WHERE Id = :jobId
+        LIMIT 1
+      ];
+
+      if (initialJobs.isEmpty()) {
+        return;
+      }
+
+      Datetime jobStartTime = initialJobs[0].CreatedDate;
+
+      // Abort all DuplicateScannerJob jobs that started at or after the initial job
+      List<AsyncApexJob> jobsToAbort = [
+        SELECT Id
+        FROM AsyncApexJob
+        WHERE
+          ApexClass.Name = 'DuplicateScannerJob'
+          AND CreatedDate >= :jobStartTime
+          AND Status IN ('Queued', 'Preparing', 'Processing', 'Holding')
+      ];
+
+      for (AsyncApexJob job : jobsToAbort) {
+        System.abortJob(job.Id);
+      }
+    } catch (Exception e) {
+      throw new AuraHandledException('Error aborting job: ' + e.getMessage());
+    }
+  }
+
+  /**
    * @description Gets the status of a running or completed async job.
    * @param jobId The AsyncApexJob ID
    * @return JobStatusWrapper with job details
@@ -276,19 +319,28 @@ public with sharing class DuplicateViewerController {
       if (job.TotalJobItems != null && job.TotalJobItems > 0) {
         wrapper.progressPercent =
           (job.JobItemsProcessed * 100) / job.TotalJobItems;
+        wrapper.isComplete =
+          job.Status == 'Completed' ||
+          job.Status == 'Failed' ||
+          job.Status == 'Aborted';
+        wrapper.isSuccess =
+          job.Status == 'Completed' &&
+          job.NumberOfErrors == 0;
       } else {
-        // For Queueable jobs, TotalJobItems might be 0
-        wrapper.progressPercent = job.Status == 'Completed' ? 100 : 50;
+        // For Queueable jobs (chained approach), check entire chain status
+        wrapper.progressPercent = calculateQueueableProgress(job);
+
+        // Chain is complete only when no more jobs are queued/processing
+        Boolean chainComplete = isChainComplete(job);
+        wrapper.isComplete =
+          chainComplete ||
+          job.Status == 'Failed' ||
+          job.Status == 'Aborted';
+        wrapper.isSuccess =
+          chainComplete &&
+          job.Status != 'Failed' &&
+          job.Status != 'Aborted';
       }
-
-      // Determine if job is complete
-      wrapper.isComplete =
-        job.Status == 'Completed' ||
-        job.Status == 'Failed' ||
-        job.Status == 'Aborted';
-
-      // Determine if job succeeded
-      wrapper.isSuccess = job.Status == 'Completed' && job.NumberOfErrors == 0;
 
       return wrapper;
     } catch (Exception e) {
@@ -296,6 +348,66 @@ public with sharing class DuplicateViewerController {
         'Error fetching job status: ' + e.getMessage()
       );
     }
+  }
+
+  /**
+   * @description Checks if the entire chain of queueable jobs is complete.
+   * @param initialJob The initial AsyncApexJob
+   * @return True if no more jobs are queued/processing
+   */
+  private static Boolean isChainComplete(AsyncApexJob initialJob) {
+    Integer inProgressJobs = [
+      SELECT COUNT()
+      FROM AsyncApexJob
+      WHERE
+        ApexClass.Name = 'DuplicateScannerJob'
+        AND CreatedDate >= :initialJob.CreatedDate
+        AND Status IN ('Queued', 'Preparing', 'Processing', 'Holding')
+    ];
+    return inProgressJobs == 0;
+  }
+
+  /**
+   * @description Calculates estimated progress for chained Queueable jobs.
+   *              Uses fixed increments per completed job for smooth progression.
+   * @param initialJob The initial AsyncApexJob
+   * @return Estimated progress percentage (0-100)
+   */
+  private static Integer calculateQueueableProgress(AsyncApexJob initialJob) {
+    // Count jobs still in progress (the chain is still running)
+    Integer inProgressJobs = [
+      SELECT COUNT()
+      FROM AsyncApexJob
+      WHERE
+        ApexClass.Name = 'DuplicateScannerJob'
+        AND CreatedDate >= :initialJob.CreatedDate
+        AND Status IN ('Queued', 'Preparing', 'Processing', 'Holding')
+    ];
+
+    // If no jobs in progress, chain is complete
+    if (inProgressJobs == 0) {
+      return 100;
+    }
+
+    // Count completed jobs in the chain
+    Integer completedJobs = [
+      SELECT COUNT()
+      FROM AsyncApexJob
+      WHERE
+        ApexClass.Name = 'DuplicateScannerJob'
+        AND CreatedDate >= :initialJob.CreatedDate
+        AND Status = 'Completed'
+    ];
+
+    // Use fixed increments for smoother progress display
+    // Each completed job adds 12%, starting at 10%, capped at 90% until done
+    Integer baseProgress = 10;
+    Integer incrementPerJob = 12;
+    Integer calculatedProgress =
+      baseProgress + (completedJobs * incrementPerJob);
+
+    // Cap at 90% while still running to leave room for completion
+    return Math.min(calculatedProgress, 90);
   }
 
   /**
@@ -339,17 +451,26 @@ public with sharing class DuplicateViewerController {
         if (job.TotalJobItems != null && job.TotalJobItems > 0) {
           wrapper.progressPercent =
             (job.JobItemsProcessed * 100) / job.TotalJobItems;
+          wrapper.isComplete =
+            job.Status == 'Completed' ||
+            job.Status == 'Failed' ||
+            job.Status == 'Aborted';
+          wrapper.isSuccess =
+            job.Status == 'Completed' &&
+            job.NumberOfErrors == 0;
         } else {
-          wrapper.progressPercent = job.Status == 'Completed' ? 100 : 50;
+          // For Queueable jobs, use chain-aware progress calculation
+          wrapper.progressPercent = calculateQueueableProgress(job);
+          Boolean chainComplete = isChainComplete(job);
+          wrapper.isComplete =
+            chainComplete ||
+            job.Status == 'Failed' ||
+            job.Status == 'Aborted';
+          wrapper.isSuccess =
+            chainComplete &&
+            job.Status != 'Failed' &&
+            job.Status != 'Aborted';
         }
-
-        wrapper.isComplete =
-          job.Status == 'Completed' ||
-          job.Status == 'Failed' ||
-          job.Status == 'Aborted';
-        wrapper.isSuccess =
-          job.Status == 'Completed' &&
-          job.NumberOfErrors == 0;
 
         wrappers.add(wrapper);
       }

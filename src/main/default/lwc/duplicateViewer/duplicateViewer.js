@@ -11,6 +11,7 @@ import getRecentJobs from "@salesforce/apex/DuplicateViewerController.getRecentJ
 import getScheduleStatus from "@salesforce/apex/DuplicateViewerController.getScheduleStatus";
 import scheduleJob from "@salesforce/apex/DuplicateViewerController.scheduleJob";
 import unscheduleJob from "@salesforce/apex/DuplicateViewerController.unscheduleJob";
+import abortJob from "@salesforce/apex/DuplicateViewerController.abortJob";
 
 const PAGE_SIZE = 12;
 const JOB_POLL_INTERVAL = 2000; // 2 seconds
@@ -27,6 +28,7 @@ export default class DuplicateViewer extends LightningElement {
   };
   @track recentJobs = [];
   @track currentJob = null;
+  @track scanningObjectType = "";
 
   // State
   @track isLoading = true;
@@ -87,6 +89,23 @@ export default class DuplicateViewer extends LightningElement {
   // =========================================================================
 
   async loadAllData() {
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "duplicateViewer.js:loadAllData:entry",
+        message: "loadAllData called",
+        data: {
+          hasRunningJob: this.currentJob && !this.currentJob.isComplete,
+          currentJobStatus: this.currentJob?.status
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: "D"
+      })
+    }).catch(() => {});
+    // #endregion
     this.isLoading = true;
     this.error = null;
 
@@ -99,6 +118,26 @@ export default class DuplicateViewer extends LightningElement {
     } catch (err) {
       this.error = this.extractErrorMessage(err);
     } finally {
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "duplicateViewer.js:loadAllData:exit",
+            message: "loadAllData completed",
+            data: {
+              isLoading: false,
+              hasRunningJob: this.currentJob && !this.currentJob.isComplete
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            hypothesisId: "D"
+          })
+        }
+      ).catch(() => {});
+      // #endregion
       this.isLoading = false;
       this.isRefreshing = false;
     }
@@ -158,6 +197,30 @@ export default class DuplicateViewer extends LightningElement {
     this._jobPollInterval = setInterval(async () => {
       try {
         const status = await getJobStatus({ jobId });
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "duplicateViewer.js:startJobPolling",
+              message: "Job status polled",
+              data: {
+                jobId,
+                status: status.status,
+                progressPercent: status.progressPercent,
+                totalJobItems: status.totalJobItems,
+                jobItemsProcessed: status.jobItemsProcessed,
+                isComplete: status.isComplete
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              hypothesisId: "A-B"
+            })
+          }
+        ).catch(() => {});
+        // #endregion
         this.currentJob = status;
 
         if (status.isComplete) {
@@ -227,7 +290,26 @@ export default class DuplicateViewer extends LightningElement {
   }
 
   get hasRunningJob() {
-    return this.currentJob && !this.currentJob.isComplete;
+    const result = this.currentJob && !this.currentJob.isComplete;
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "duplicateViewer.js:hasRunningJob",
+        message: "hasRunningJob computed",
+        data: {
+          result,
+          currentJob: this.currentJob,
+          isLoading: this.isLoading
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: "D-E"
+      })
+    }).catch(() => {});
+    // #endregion
+    return result;
   }
 
   get runningJobStatus() {
@@ -303,7 +385,7 @@ export default class DuplicateViewer extends LightningElement {
       `If your org has a large number of records, this scan may take a significant amount of time to complete.\n\n` +
       `Do you want to proceed?`;
 
-    // eslint-disable-next-line no-alert
+    // eslint-disable-next-line no-restricted-globals, no-alert
     if (!confirm(warningMessage)) {
       return;
     }
@@ -312,7 +394,25 @@ export default class DuplicateViewer extends LightningElement {
       const jobId = await runDuplicateScan({
         objectType: this.selectedObjectType
       });
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "duplicateViewer.js:handleRunScan",
+            message: "Scan started",
+            data: { jobId, objectType: this.selectedObjectType },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            hypothesisId: "A-C"
+          })
+        }
+      ).catch(() => {});
+      // #endregion
 
+      this.scanningObjectType = this.selectedObjectType;
       this.currentJob = {
         jobId: jobId,
         status: "Queued",
@@ -328,6 +428,28 @@ export default class DuplicateViewer extends LightningElement {
       );
 
       this.startJobPolling(jobId);
+    } catch (err) {
+      this.showToast("Error", this.extractErrorMessage(err), "error");
+    }
+  }
+
+  async handleStopScan() {
+    if (!this.currentJob || !this.currentJob.jobId) {
+      return;
+    }
+
+    // eslint-disable-next-line no-restricted-globals, no-alert
+    if (!confirm("Are you sure you want to stop the scan?")) {
+      return;
+    }
+
+    try {
+      await abortJob({ jobId: this.currentJob.jobId });
+      this.stopJobPolling();
+      this.currentJob = null;
+      this.scanningObjectType = "";
+      this.showToast("Info", "Scan has been stopped.", "info");
+      await this.loadAllData();
     } catch (err) {
       this.showToast("Error", this.extractErrorMessage(err), "error");
     }
@@ -359,7 +481,7 @@ export default class DuplicateViewer extends LightningElement {
     this.mergeSetId = null;
   }
 
-  async handleMergeComplete(event) {
+  async handleMergeComplete(_event) {
     // Don't close modal - let user see success state and choose to navigate or close
     // Just reload data in background
     await this.loadAllData();
@@ -369,7 +491,7 @@ export default class DuplicateViewer extends LightningElement {
     event.stopPropagation();
     const setId = event.currentTarget.dataset.id;
 
-    // eslint-disable-next-line no-alert
+    // eslint-disable-next-line no-restricted-globals, no-alert
     if (!confirm("Are you sure you want to delete this duplicate set?")) {
       return;
     }

@@ -101,8 +101,18 @@
   gap: 16px;
 }
 
-.job-spinner {
-  --sds-c-spinner-color-foreground: white;
+.job-icon {
+  --sds-c-icon-color-foreground-default: white;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .job-status-text {
@@ -130,6 +140,21 @@
   max-width: 300px;
 }
 
+.job-progress {
+  flex: 1;
+  --slds-c-progressbar-color-background: rgba(255, 255, 255, 0.3);
+  --slds-c-progressbar-value-color-background: white;
+}
+
+.stop-btn {
+  --sds-c-button-icon-color-foreground: rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.stop-btn:hover {
+  --sds-c-button-icon-color-foreground: white;
+}
+
 .job-progress-bar {
   flex: 1;
   height: 8px;
@@ -143,6 +168,28 @@
   background: white;
   border-radius: 4px;
   transition: width 0.3s ease;
+}
+
+.job-progress-fill-animated {
+  height: 100%;
+  background: linear-gradient(90deg, transparent, white, transparent);
+  border-radius: 4px;
+  animation: progress-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-pulse {
+  0% {
+    width: 20%;
+    margin-left: 0%;
+  }
+  50% {
+    width: 40%;
+    margin-left: 30%;
+  }
+  100% {
+    width: 20%;
+    margin-left: 80%;
+  }
 }
 
 .job-progress-text {
@@ -254,22 +301,6 @@
 .action-group {
   display: flex;
   gap: 12px;
-}
-
-/* Loading State */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 40px;
-  gap: 16px;
-}
-
-.loading-text {
-  color: var(--color-text-secondary);
-  font-size: 15px;
-  margin: 0;
 }
 
 /* Error State */
