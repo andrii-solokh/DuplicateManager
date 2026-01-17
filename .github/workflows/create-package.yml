@@ -42,18 +42,18 @@ jobs:
             --json 2>&1)
           EXIT_CODE=$?
           set -e
-          
+
           echo "SF Output: $VERSION_OUTPUT"
-          
+
           if [ $EXIT_CODE -ne 0 ]; then
             echo "::error::Package version creation failed with exit code $EXIT_CODE"
             echo "$VERSION_OUTPUT" | jq '.' 2>/dev/null || echo "$VERSION_OUTPUT"
             exit $EXIT_CODE
           fi
-          
+
           VERSION_ID=$(echo $VERSION_OUTPUT | jq -r '.result.SubscriberPackageVersionId')
           VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.Version')
-          
+
           echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
           echo "::notice::Beta package version created: $VERSION_ID ($VERSION_NUMBER)"

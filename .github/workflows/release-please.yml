@@ -43,15 +43,15 @@ jobs:
           VERSION="${{ needs.release-please.outputs.version }}"
           # Convert semver to Salesforce format (1.2.3 -> 1.2.3.NEXT)
           SF_VERSION="${VERSION}.NEXT"
-          
+
           # Update version in sfdx-project.json
           jq --arg v "$SF_VERSION" '.packageDirectories[0].versionNumber = $v' sfdx-project.json > tmp.json
           mv tmp.json sfdx-project.json
-          
+
           # Update versionName
           jq --arg v "ver ${VERSION}" '.packageDirectories[0].versionName = $v' sfdx-project.json > tmp.json
           mv tmp.json sfdx-project.json
-          
+
           cat sfdx-project.json
 
       - name: Commit version update

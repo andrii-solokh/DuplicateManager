@@ -38,12 +38,12 @@ jobs:
               --packages DuplicateManager \
               --json | jq -r '.result | map(select(.IsReleased == false)) | sort_by(.CreatedDate) | reverse | .[0].SubscriberPackageVersionId')
           fi
-          
+
           if [ -z "$VERSION_INFO" ] || [ "$VERSION_INFO" == "null" ]; then
             echo "::error::No package version found to promote"
             exit 1
           fi
-          
+
           echo "version_id=$VERSION_INFO" >> $GITHUB_OUTPUT
           echo "::notice::Found package version to promote: $VERSION_INFO"
 
@@ -60,21 +60,21 @@ jobs:
           script: |
             const currentBody = context.payload.release.body || '';
             const installInstructions = `
-            
+
             ---
-            
+
             ## Installation
-            
+
             **Production/Sandbox Install:**
             \`\`\`bash
             sf package install --package ${{ steps.get_version.outputs.version_id }} --target-org your-org-alias --wait 10
             \`\`\`
-            
+
             **Package Version ID:** \`${{ steps.get_version.outputs.version_id }}\`
-            
+
             > ✅ This version has been promoted and can be installed in production orgs.
             `;
-            
+
             await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
