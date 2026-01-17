@@ -1,0 +1,63 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: simple
+          package-name: DuplicateManager
+
+      - name: Output Release Info
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "Release created: ${{ steps.release.outputs.tag_name }}"
+          echo "Version: ${{ steps.release.outputs.version }}"
+
+  # Update sfdx-project.json version when release is created
+  update-sfdx-version:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update sfdx-project.json version
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          # Convert semver to Salesforce format (1.2.3 -> 1.2.3.NEXT)
+          SF_VERSION="${VERSION}.NEXT"
+          
+          # Update version in sfdx-project.json
+          jq --arg v "$SF_VERSION" '.packageDirectories[0].versionNumber = $v' sfdx-project.json > tmp.json
+          mv tmp.json sfdx-project.json
+          
+          # Update versionName
+          jq --arg v "ver ${VERSION}" '.packageDirectories[0].versionName = $v' sfdx-project.json > tmp.json
+          mv tmp.json sfdx-project.json
+          
+          cat sfdx-project.json
+
+      - name: Commit version update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sfdx-project.json
+          git commit -m "chore: update sfdx-project.json to v${{ needs.release-please.outputs.version }}" || echo "No changes to commit"
+          git push

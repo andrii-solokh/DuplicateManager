@@ -221,14 +221,51 @@ sf package version promote \
   --no-prompt
 ```
 
-### Releasing a New Version
+### Releasing a New Version (Automated with Release Please)
 
-1. Ensure all changes are merged to `main`
-2. Wait for the beta package to build (check commit comments)
-3. Go to GitHub → Releases → "Create a new release"
-4. Create a tag matching the version (e.g., `v1.0.0.1`)
-5. Add release notes and publish
-6. The release workflow automatically promotes the package
+This project uses [Release Please](https://github.com/googleapis/release-please) for automated versioning and changelog generation.
+
+**How it works:**
+
+1. **Use Conventional Commits** when committing:
+   - `feat: add new feature` → bumps minor version (1.0.0 → 1.1.0)
+   - `fix: resolve bug` → bumps patch version (1.0.0 → 1.0.1)
+   - `feat!: breaking change` → bumps major version (1.0.0 → 2.0.0)
+
+2. **Release Please creates a PR** that accumulates all changes:
+   - Updates `CHANGELOG.md` automatically
+   - Updates version numbers
+   - PR stays open, collecting commits until you're ready
+
+3. **Merge the Release PR** when ready to release:
+   - Creates a GitHub Release automatically
+   - Triggers package promotion to production
+
+**Workflow Timeline:**
+```
+Push feat: X  ──┐
+Push fix: Y   ──┼── Release PR updates (accumulates changes)
+Push feat: Z  ──┘
+                │
+         (merge when ready)
+                │
+                ▼
+         GitHub Release v1.1.0
+                │
+                ▼
+         Package promoted to production
+```
+
+**Commit Message Format:**
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`
 
 ## Debugging
 

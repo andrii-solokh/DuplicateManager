@@ -3,6 +3,11 @@ name: Release Package Version
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version_id:
+        description: 'Package Version ID to promote (04t...)'
+        required: true
 
 jobs:
   promote-package:
@@ -20,23 +25,23 @@ jobs:
           sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
           rm auth.txt
 
-      - name: Get Latest Package Version
+      - name: Get Package Version to Promote
         id: get_version
         run: |
-          # Get the latest beta version that matches the release tag
-          RELEASE_TAG="${{ github.event.release.tag_name }}"
-          VERSION_NUMBER="${RELEASE_TAG#v}"  # Remove 'v' prefix
-          
-          VERSION_INFO=$(sf package version list \
-            --packages DuplicateManager \
-            --json | jq -r ".result[] | select(.Version == \"$VERSION_NUMBER\") | .SubscriberPackageVersionId" | head -1)
-          
-          if [ -z "$VERSION_INFO" ] || [ "$VERSION_INFO" == "null" ]; then
-            # If no exact match, get the latest beta version
+          # Check if manually triggered with version ID
+          if [ -n "${{ github.event.inputs.version_id }}" ]; then
+            VERSION_INFO="${{ github.event.inputs.version_id }}"
+            echo "Using manually specified version: $VERSION_INFO"
+          else
+            # Get the latest beta version (most recently created)
             VERSION_INFO=$(sf package version list \
               --packages DuplicateManager \
-              --released-only false \
-              --json | jq -r '.result | sort_by(.CreatedDate) | reverse | .[0].SubscriberPackageVersionId')
+              --json | jq -r '.result | map(select(.IsReleased == false)) | sort_by(.CreatedDate) | reverse | .[0].SubscriberPackageVersionId')
+          fi
+          
+          if [ -z "$VERSION_INFO" ] || [ "$VERSION_INFO" == "null" ]; then
+            echo "::error::No package version found to promote"
+            exit 1
           fi
           
           echo "version_id=$VERSION_INFO" >> $GITHUB_OUTPUT
