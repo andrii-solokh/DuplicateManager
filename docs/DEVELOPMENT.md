@@ -14,7 +14,7 @@ This guide covers local development setup for contributing to Duplicate Manager.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/andriisolokh/DuplicateManager.git
+git clone https://github.com/andrii-solokh/DuplicateManager.git
 cd DuplicateManager
 ```
 
@@ -24,11 +24,30 @@ cd DuplicateManager
 npm install
 ```
 
-### 3. Authenticate DevHub
+### 3. Configure Your DevHub
+
+Each developer needs their own Salesforce DevHub org. You have several options:
+
+**Option A: Use a Salesforce Developer Edition org (free)**
+
+1. Sign up at [developer.salesforce.com](https://developer.salesforce.com/signup)
+2. Enable DevHub: Setup → DevHub → Enable
+
+**Option B: Use a Trailhead Playground**
+
+1. Create a playground at [trailhead.salesforce.com](https://trailhead.salesforce.com)
+2. Enable DevHub in Setup
+
+**Option C: Use your company's DevHub** (if available)
+
+Then authenticate:
 
 ```bash
-sf org login web --set-default-dev-hub --alias latdx-dh
+sf org login web --set-default-dev-hub --alias my-devhub
 ```
+
+> **Tip:** You can use any alias you prefer (e.g., `my-devhub`, `personal-dh`, etc.). The alias is
+> stored locally and not committed to the repository.
 
 ### 4. Create a Scratch Org
 
@@ -52,7 +71,18 @@ sf project deploy start
 sf org assign permset --name Duplicate_Manager
 ```
 
-### 7. Open the Org
+### 7. Load Test Data
+
+Load sample duplicate contacts for testing:
+
+```bash
+sf apex run --file scripts/apex/CreateTestDuplicates.apex
+```
+
+This creates ~5000 contacts with duplicate emails to test duplicate detection. The script uses
+`DMLOptions` to bypass duplicate rules during insert.
+
+### 8. Open the Org
 
 ```bash
 sf org open
@@ -88,6 +118,7 @@ DuplicateManager/
 ### Making Changes
 
 1. Create a feature branch:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -95,15 +126,17 @@ DuplicateManager/
 2. Make your changes
 
 3. Push to scratch org to test:
+
    ```bash
    sf project deploy start
    ```
 
 4. Run tests:
+
    ```bash
    # Apex tests
    sf apex run test --test-level RunLocalTests --code-coverage
-   
+
    # LWC tests
    npm run test:unit
    ```
@@ -223,7 +256,8 @@ sf package version promote \
 
 ### Releasing a New Version (Automated with Release Please)
 
-This project uses [Release Please](https://github.com/googleapis/release-please) for automated versioning and changelog generation.
+This project uses [Release Please](https://github.com/googleapis/release-please) for automated
+versioning and changelog generation.
 
 **How it works:**
 
@@ -242,6 +276,7 @@ This project uses [Release Please](https://github.com/googleapis/release-please)
    - Triggers package promotion to production
 
 **Workflow Timeline:**
+
 ```
 Push feat: X  ──┐
 Push fix: Y   ──┼── Release PR updates (accumulates changes)
@@ -257,6 +292,7 @@ Push feat: Z  ──┘
 ```
 
 **Commit Message Format:**
+
 ```
 <type>(<scope>): <description>
 
@@ -331,15 +367,23 @@ System.debug('Job ID: ' + jobId);
 
 ### "Package not found"
 
-Ensure you're connected to the correct DevHub:
+Ensure you're connected to your DevHub:
+
 ```bash
+# List all authenticated orgs
 sf org list --all
-sf config set target-dev-hub=latdx-dh
+
+# Set your DevHub as the default (use your alias)
+sf config set target-dev-hub=my-devhub
+
+# Or re-authenticate if needed
+sf org login web --set-default-dev-hub --alias my-devhub
 ```
 
 ### "Push failed"
 
 Check for conflicts:
+
 ```bash
 sf project deploy preview
 ```
@@ -347,6 +391,7 @@ sf project deploy preview
 ### "Test coverage too low"
 
 Review coverage report:
+
 ```bash
 sf apex run test --test-level RunLocalTests --code-coverage --result-format human
 ```

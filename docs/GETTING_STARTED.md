@@ -31,7 +31,7 @@ For development or customization:
 
 ```bash
 # Clone the repository
-git clone https://github.com/andriisolokh/DuplicateManager.git
+git clone https://github.com/andrii-solokh/DuplicateManager.git
 cd DuplicateManager
 
 # Create a scratch org (optional)
@@ -51,11 +51,13 @@ sf org assign permset --name Duplicate_Manager --target-org your-org-alias
 Users need the `Duplicate_Manager` permission set to access the functionality:
 
 **Via CLI:**
+
 ```bash
 sf org assign permset --name Duplicate_Manager --target-org your-org-alias
 ```
 
 **Via Setup:**
+
 1. Go to Setup → Users → Permission Sets
 2. Click on "Duplicate Manager"
 3. Click "Manage Assignments"
@@ -100,12 +102,14 @@ To verify the installation:
 ### "No active duplicate rules found"
 
 Ensure you have at least one active duplicate rule for the object you're scanning:
+
 1. Go to Setup → Duplicate Rules
 2. Create or activate a rule for your object
 
 ### Permission errors
 
 Ensure the user has:
+
 - The `Duplicate_Manager` permission set assigned
 - Read access to the objects being scanned
 - Access to the Duplicate Manager tab
