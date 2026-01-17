@@ -15,20 +15,6 @@
         { "type": "chore", "section": "Miscellaneous", "hidden": true },
         { "type": "test", "section": "Tests", "hidden": true },
         { "type": "ci", "section": "CI/CD", "hidden": true }
-      ],
-      "extra-files": [
-        {
-          "type": "json",
-          "path": "sfdx-project.json",
-          "jsonpath": "$.packageDirectories[0].versionName",
-          "version-prefix": "ver "
-        },
-        {
-          "type": "json",
-          "path": "sfdx-project.json",
-          "jsonpath": "$.packageDirectories[0].versionNumber",
-          "version-suffix": ".NEXT"
-        }
       ]
     }
   },

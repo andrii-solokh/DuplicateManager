@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      skip_version_bump:
+        description: "Skip version bump (use current version)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -20,12 +25,101 @@ permissions:
 jobs:
   create-beta:
     runs-on: ubuntu-latest
+    # Skip if this is a version bump commit (to prevent infinite loop)
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'chore: bump version')"
     outputs:
       version_id: ${{ steps.create_version.outputs.version_id }}
       version_number: ${{ steps.create_version.outputs.version_number }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version bump type
+        id: bump_type
+        if: github.event_name != 'workflow_dispatch' || inputs.skip_version_bump != true
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          echo "Commit message: $COMMIT_MSG"
+
+          # Check for breaking change
+          if echo "$COMMIT_MSG" | grep -qiE "BREAKING CHANGE|^[a-z]+(\(.+\))?!:"; then
+            echo "bump=major" >> $GITHUB_OUTPUT
+            echo "Detected: MAJOR bump (breaking change)"
+          # Check for feature
+          elif echo "$COMMIT_MSG" | grep -qE "^feat(\(.+\))?:"; then
+            echo "bump=minor" >> $GITHUB_OUTPUT
+            echo "Detected: MINOR bump (new feature)"
+          # Check for fix, perf, refactor
+          elif echo "$COMMIT_MSG" | grep -qE "^(fix|perf|refactor)(\(.+\))?:"; then
+            echo "bump=patch" >> $GITHUB_OUTPUT
+            echo "Detected: PATCH bump (fix/perf/refactor)"
+          else
+            echo "bump=none" >> $GITHUB_OUTPUT
+            echo "Detected: No version bump (chore/docs/style/test/ci)"
+          fi
+
+      - name: Bump version in sfdx-project.json
+        id: bump_version
+        if: steps.bump_type.outputs.bump != 'none' && (github.event_name != 'workflow_dispatch' || inputs.skip_version_bump != true)
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(jq -r '.packageDirectories[0].versionNumber' sfdx-project.json | sed 's/.NEXT$//')
+          echo "Current version: $CURRENT_VERSION"
+
+          # Parse version parts
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+
+          # Bump based on type
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump }}"
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          # Update sfdx-project.json
+          jq --arg v "${NEW_VERSION}.NEXT" '.packageDirectories[0].versionNumber = $v' sfdx-project.json > tmp.json
+          mv tmp.json sfdx-project.json
+
+          jq --arg v "ver ${NEW_VERSION}" '.packageDirectories[0].versionName = $v' sfdx-project.json > tmp.json
+          mv tmp.json sfdx-project.json
+
+          echo "Updated sfdx-project.json:"
+          cat sfdx-project.json
+
+      - name: Commit version bump
+        if: steps.bump_version.outputs.new_version != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sfdx-project.json
+          git commit -m "chore: bump version to ${{ steps.bump_version.outputs.new_version }} [skip ci]"
+          git push
+
+      - name: Show current version
+        run: |
+          echo "sfdx-project.json:"
+          cat sfdx-project.json
+          echo ""
+          echo "Version: $(jq -r '.packageDirectories[0].versionNumber' sfdx-project.json)"
 
       - name: Install Salesforce CLI
         run: npm install -g @salesforce/cli
@@ -35,13 +129,6 @@ jobs:
           echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
           sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
           rm auth.txt
-
-      - name: Show current version
-        run: |
-          echo "Current sfdx-project.json:"
-          cat sfdx-project.json
-          echo ""
-          echo "Version: $(jq -r '.packageDirectories[0].versionNumber' sfdx-project.json)"
 
       - name: Create Package Version (Beta)
         id: create_version
@@ -80,9 +167,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const bumpType = '${{ steps.bump_type.outputs.bump }}';
+            const bumpInfo = bumpType !== 'none' ? `\n**Version Bump:** ${bumpType.toUpperCase()}\n` : '';
+
             github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: context.sha,
-              body: `📦 **Beta Package Created**\n\nVersion: \`${{ steps.create_version.outputs.version_number }}\`\nPackage ID: \`${{ steps.create_version.outputs.version_id }}\`\n\n**Install in sandbox:**\n\`\`\`bash\nsf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10\n\`\`\`\n\n> ⚠️ This is a beta version and can only be installed in sandboxes. Create a GitHub Release to promote for production.`
+              body: `📦 **Beta Package Created**\n${bumpInfo}\nVersion: \`${{ steps.create_version.outputs.version_number }}\`\nPackage ID: \`${{ steps.create_version.outputs.version_id }}\`\n\n**Install in sandbox:**\n\`\`\`bash\nsf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10\n\`\`\`\n\n> ⚠️ This is a beta version and can only be installed in sandboxes. Merge the Release PR to promote for production.`
             })
