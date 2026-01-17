@@ -279,6 +279,17 @@ export default class DuplicateViewer extends LightningElement {
             return;
         }
 
+        // Warn user about deletion of existing duplicate sets and potential long wait time
+        const warningMessage = 
+            `Warning: Starting a new scan will delete all existing Duplicate Record Sets for ${this.selectedObjectType}.\n\n` +
+            `If your org has a large number of records, this scan may take a significant amount of time to complete.\n\n` +
+            `Do you want to proceed?`;
+        
+        // eslint-disable-next-line no-alert
+        if (!confirm(warningMessage)) {
+            return;
+        }
+
         try {
             const jobId = await runDuplicateScan({ objectType: this.selectedObjectType });
             
