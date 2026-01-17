@@ -1,0 +1,14 @@
+{
+  "objects": [
+    {
+      "operation": "Insert",
+      "externalId": "Email",
+      "query": "SELECT FirstName, LastName, Email, Phone, Title, Department FROM Contact",
+      "allRecords": true,
+      "allowDuplicates": true
+    }
+  ],
+  "promptOnMissingParentObjects": false,
+  "allOrNone": false,
+  "allowDuplicates": true
+}
