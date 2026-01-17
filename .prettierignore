@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Salesforce
+.sfdx/
+.sf/
+.localdevserver/
+
+# Build outputs
+coverage/
+dist/
+build/
+
+# Logs
+*.log
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Package lock (managed by npm)
+package-lock.json

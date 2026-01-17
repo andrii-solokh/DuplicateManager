@@ -1,0 +1,35 @@
+{
+  "root": true,
+  "extends": ["@salesforce/eslint-config-lwc/recommended"],
+  "plugins": ["@lwc/eslint-plugin-lwc"],
+  "parser": "@babel/eslint-parser",
+  "parserOptions": {
+    "requireConfigFile": false,
+    "babelOptions": {
+      "parserOpts": {
+        "plugins": ["classProperties", "decorators"]
+      }
+    }
+  },
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "rules": {
+    "no-console": ["warn", { "allow": ["error"] }],
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@lwc/lwc/no-async-operation": "off",
+    "@lwc/lwc/consistent-component-name": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/__tests__/**/*.js"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}
