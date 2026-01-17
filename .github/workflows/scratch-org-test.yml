@@ -1,0 +1,68 @@
+name: Scratch Org Test
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Every Monday at 6 AM UTC
+  workflow_dispatch:
+
+jobs:
+  scratch-org-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run LWC Tests
+        run: npm run test:unit
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Authenticate DevHub
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
+          rm auth.txt
+
+      - name: Create Scratch Org
+        run: |
+          sf org create scratch \
+            --definition-file config/project-scratch-def.json \
+            --alias scratch-test \
+            --duration-days 1 \
+            --wait 15
+
+      - name: Deploy Source
+        run: sf project deploy start --target-org scratch-test
+
+      - name: Assign Permission Set
+        run: sf org assign permset --name Duplicate_Manager --target-org scratch-test
+
+      - name: Run Apex Tests
+        run: |
+          sf apex run test \
+            --target-org scratch-test \
+            --test-level RunLocalTests \
+            --code-coverage \
+            --result-format human \
+            --wait 10
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-test-results
+          path: test-results/
+
+      - name: Delete Scratch Org
+        if: always()
+        run: sf org delete scratch --target-org scratch-test --no-prompt || true

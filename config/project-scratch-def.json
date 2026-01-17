@@ -1,0 +1,19 @@
+{
+  "orgName": "DuplicateManager Dev",
+  "edition": "Developer",
+  "features": [
+    "DuplicateManagement",
+    "ContactsToMultipleAccounts"
+  ],
+  "settings": {
+    "duplicateRuleSettings": {
+      "enableDuplicateRulesForRecordMerging": true
+    },
+    "lightningExperienceSettings": {
+      "enableS1DesktopEnabled": true
+    },
+    "mobileSettings": {
+      "enableS1EncryptedStoragePref2": false
+    }
+  }
+}

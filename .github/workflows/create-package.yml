@@ -1,0 +1,71 @@
+name: Create Package Version
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'sfdx-project.json'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version type (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  create-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Authenticate DevHub
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
+          rm auth.txt
+
+      - name: Create Package Version
+        id: create_version
+        run: |
+          VERSION_OUTPUT=$(sf package version create \
+            --package DuplicateManager \
+            --installation-key-bypass \
+            --wait 20 \
+            --code-coverage \
+            --json)
+          
+          VERSION_ID=$(echo $VERSION_OUTPUT | jq -r '.result.SubscriberPackageVersionId')
+          VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.Version')
+          
+          echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+          echo "Package version created: $VERSION_ID ($VERSION_NUMBER)"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.create_version.outputs.version_number }}
+          name: Release v${{ steps.create_version.outputs.version_number }}
+          body: |
+            ## Installation
+            
+            Install this version with:
+            ```bash
+            sf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-org-alias --wait 10
+            ```
+            
+            Or use the package ID: `${{ steps.create_version.outputs.version_id }}`
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

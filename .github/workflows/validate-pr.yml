@@ -1,0 +1,64 @@
+name: Validate PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'config/**'
+      - 'sfdx-project.json'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run LWC Tests
+        run: npm run test:unit:coverage
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Authenticate DevHub
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
+          rm auth.txt
+
+      - name: Create Scratch Org
+        run: |
+          sf org create scratch \
+            --definition-file config/project-scratch-def.json \
+            --alias pr-validation \
+            --duration-days 1 \
+            --wait 10
+
+      - name: Deploy Source
+        run: sf project deploy start --target-org pr-validation
+
+      - name: Assign Permission Set
+        run: sf org assign permset --name Duplicate_Manager --target-org pr-validation
+
+      - name: Run Apex Tests
+        run: |
+          sf apex run test \
+            --target-org pr-validation \
+            --test-level RunLocalTests \
+            --code-coverage \
+            --result-format human \
+            --wait 10
+
+      - name: Delete Scratch Org
+        if: always()
+        run: sf org delete scratch --target-org pr-validation --no-prompt || true
