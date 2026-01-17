@@ -1,4 +1,5 @@
 {
   "duplicateManager.scratchOrg.durationDays": 30,
-  "duplicateManager.scratchOrg.alias": "dm-dev"
+  "duplicateManager.scratchOrg.alias": "dm-dev",
+  "xml.preferences.showSchemaDocumentationType": "none"
 }
