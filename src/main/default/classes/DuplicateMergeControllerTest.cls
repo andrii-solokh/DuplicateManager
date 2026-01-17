@@ -1541,14 +1541,14 @@ private class DuplicateMergeControllerTest {
     
     @IsTest
     static void testFormatAddressWithStateCode() {
-        // Create a Contact with state code instead of full state name
+        // Create a Contact with state/country as text (works without State/Country picklists enabled)
         Contact c = new Contact(
             FirstName = 'StateCode' + String.valueOf(Datetime.now().getTime()),
             LastName = 'CodeTest',
             Email = 'statecode' + String.valueOf(Datetime.now().getTime()) + '@codetest.com',
             MailingCity = 'New York',
-            MailingStateCode = 'NY',
-            MailingCountryCode = 'US'
+            MailingState = 'NY',
+            MailingCountry = 'US'
         );
         
         Database.DMLOptions dmlOptions = new Database.DMLOptions();
