@@ -5,15 +5,21 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/andriisolokh/DuplicateManager.git"
+    "url": "https://github.com/andrii-solokh/DuplicateManager.git"
   },
   "scripts": {
-    "lint": "eslint **/lwc/**/*.js",
-    "test": "npm run test:unit",
-    "test:unit": "sfdx-lwc-jest",
+    "scratch:create": "sf org create scratch --definition-file config/project-scratch-def.json --set-default --wait 20",
+    "source:deploy": "sf project deploy start",
+    "permset:assign": "sf org assign permset --name Duplicate_Manager",
+    "data:load": "sf apex run --file scripts/apex/CreateTestDuplicates.apex",
+    "org:open": "sf org open",
+    "test:apex": "sf apex run test --test-level RunLocalTests --code-coverage --result-format human --wait 20",
+    "test:unit": "sfdx-lwc-jest -- --passWithNoTests",
     "test:unit:watch": "sfdx-lwc-jest --watch",
     "test:unit:debug": "sfdx-lwc-jest --debug",
     "test:unit:coverage": "sfdx-lwc-jest --coverage",
+    "test": "npm run test:unit",
+    "lint": "eslint **/lwc/**/*.js",
     "prettier": "prettier --write \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\"",
     "prettier:verify": "prettier --list-different \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\""
   },
