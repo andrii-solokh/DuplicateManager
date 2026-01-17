@@ -10,6 +10,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Features
 
+* **ci:** bump version on every commit to main ([d249b08](https://github.com/andrii-solokh/DuplicateManager/commit/d249b08fc3f884c523a610fdec34649b22b00c91))
+* **duplicate-viewer:** add stop scan functionality with improved job tracking ([41947fb](https://github.com/andrii-solokh/DuplicateManager/commit/41947fbd48ed6098e8a801f8a32cc6a4867ddc94))
+* **lwc:** add confirmation dialog before starting duplicate scan ([13299e9](https://github.com/andrii-solokh/DuplicateManager/commit/13299e9df5703fdb8099d4d096f7558271aa4fbf))
+
+
+### Bug Fixes
+
+* **ci:** create beta package only after release is created ([3c60838](https://github.com/andrii-solokh/DuplicateManager/commit/3c608383ac7bff8ae60b2db0d26da59c48c10066))
+* **ci:** separate beta creation and promotion flows ([e3998b7](https://github.com/andrii-solokh/DuplicateManager/commit/e3998b77a260de0a3e8ce21a0cd559e49368ba28))
+* **ci:** trigger promotion on GitHub release publish ([d73998d](https://github.com/andrii-solokh/DuplicateManager/commit/d73998d1503069eb2540108f3e930f3925f66666))
+* **ci:** use boolean type for workflow input default ([14b3be1](https://github.com/andrii-solokh/DuplicateManager/commit/14b3be14af87369ec426f26bd89bea994989a3b8))
+* **test:** correct CSS selectors and async handling in Jest tests ([b37dbe3](https://github.com/andrii-solokh/DuplicateManager/commit/b37dbe3666396983be23f75bc11a7aca7d5115f5))
+
+## [1.1.0](https://github.com/andrii-solokh/DuplicateManager/compare/v1.0.0...v1.1.0) (2026-01-17)
+
+
+### Features
+
 * **lwc:** add confirmation dialog before starting duplicate scan ([13299e9](https://github.com/andrii-solokh/DuplicateManager/commit/13299e9df5703fdb8099d4d096f7558271aa4fbf))
 
 
