@@ -5,7 +5,7 @@
 
 A modern, open-source Salesforce unlocked package for viewing, managing, and merging duplicate records. Built with Lightning Web Components and leveraging Salesforce's native duplicate detection API.
 
-![Duplicate Manager Screenshot](docs/images/screenshot.png)
+![Duplicate Manager Screenshot](docs/images/home.png)
 
 ## Features
 
