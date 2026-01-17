@@ -175,36 +175,60 @@ npm run prettier:verify
 
 ## Creating a Package Version
 
-### Development Version (Beta)
+### Automated (CI/CD)
+
+Package versions are created automatically:
+
+1. **Beta versions** - Created on every push to `main` branch
+   - Can only be installed in sandboxes
+   - Useful for testing and QA validation
+
+2. **Released versions** - Created when you publish a GitHub Release
+   - Can be installed in production orgs
+   - Permanent (cannot be deleted)
+
+### Manual (Local Development)
+
+#### Create Beta Version
 
 ```bash
 sf package version create \
   --package DuplicateManager \
   --installation-key-bypass \
   --wait 10 \
-  --target-dev-hub latdx-dh
+  --target-dev-hub your-devhub
 ```
 
-### Production Version
+#### Create Production-Ready Version
 
 ```bash
 sf package version create \
   --package DuplicateManager \
   --installation-key-bypass \
   --wait 10 \
-  --target-dev-hub latdx-dh \
+  --target-dev-hub your-devhub \
   --code-coverage \
   --version-name "ver 1.0" \
   --version-number 1.0.0.NEXT
 ```
 
-### Promote to Released
+#### Promote to Released
 
 ```bash
 sf package version promote \
   --package DuplicateManager@1.0.0-1 \
-  --target-dev-hub latdx-dh
+  --target-dev-hub your-devhub \
+  --no-prompt
 ```
+
+### Releasing a New Version
+
+1. Ensure all changes are merged to `main`
+2. Wait for the beta package to build (check commit comments)
+3. Go to GitHub → Releases → "Create a new release"
+4. Create a tag matching the version (e.g., `v1.0.0.1`)
+5. Add release notes and publish
+6. The release workflow automatically promotes the package
 
 ## Debugging
 

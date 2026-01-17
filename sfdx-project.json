@@ -1,16 +1,19 @@
 {
   "packageDirectories": [
     {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
       "path": "src",
-      "default": true,
+      "default": false,
       "package": "DuplicateManager",
-      "versionName": "ver 1.0",
-      "versionNumber": "1.0.0.NEXT",
-      "versionDescription": "Salesforce Duplicate Management UI - View, manage, and merge duplicate records"
+      "versionDescription": ""
     }
   ],
   "name": "DuplicateManager",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
-  "sourceApiVersion": "63.0"
+  "sourceApiVersion": "63.0",
+  "packageAliases": {
+    "DuplicateManager": "0HogK0000000ps9SAA"
+  }
 }

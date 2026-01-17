@@ -1,0 +1,78 @@
+name: Release Package Version
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  promote-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Authenticate DevHub
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
+          rm auth.txt
+
+      - name: Get Latest Package Version
+        id: get_version
+        run: |
+          # Get the latest beta version that matches the release tag
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          VERSION_NUMBER="${RELEASE_TAG#v}"  # Remove 'v' prefix
+          
+          VERSION_INFO=$(sf package version list \
+            --packages DuplicateManager \
+            --json | jq -r ".result[] | select(.Version == \"$VERSION_NUMBER\") | .SubscriberPackageVersionId" | head -1)
+          
+          if [ -z "$VERSION_INFO" ] || [ "$VERSION_INFO" == "null" ]; then
+            # If no exact match, get the latest beta version
+            VERSION_INFO=$(sf package version list \
+              --packages DuplicateManager \
+              --released-only false \
+              --json | jq -r '.result | sort_by(.CreatedDate) | reverse | .[0].SubscriberPackageVersionId')
+          fi
+          
+          echo "version_id=$VERSION_INFO" >> $GITHUB_OUTPUT
+          echo "::notice::Found package version to promote: $VERSION_INFO"
+
+      - name: Promote Package Version
+        run: |
+          sf package version promote \
+            --package ${{ steps.get_version.outputs.version_id }} \
+            --no-prompt
+          echo "::notice::Package promoted to Released status!"
+
+      - name: Update Release Notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const currentBody = context.payload.release.body || '';
+            const installInstructions = `
+            
+            ---
+            
+            ## Installation
+            
+            **Production/Sandbox Install:**
+            \`\`\`bash
+            sf package install --package ${{ steps.get_version.outputs.version_id }} --target-org your-org-alias --wait 10
+            \`\`\`
+            
+            **Package Version ID:** \`${{ steps.get_version.outputs.version_id }}\`
+            
+            > ✅ This version has been promoted and can be installed in production orgs.
+            `;
+            
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              body: currentBody + installInstructions
+            });
