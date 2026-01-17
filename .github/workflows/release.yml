@@ -35,20 +35,23 @@ jobs:
           echo "Tag: ${{ steps.release.outputs.tag_name }}"
           echo "Version: ${{ steps.release.outputs.version }}"
 
-  create-package:
+  # Create beta package on source changes (NOT on release PR merge)
+  create-beta:
     runs-on: ubuntu-latest
     needs: release-please
-    # Run if: source changed OR release was created OR manual trigger
-    # Skip version bump commits
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    # Only run if NOT a release (release PR merge) and not skip ci
+    if: |
+      needs.release-please.outputs.release_created != 'true' &&
+      !contains(github.event.head_commit.message, '[skip ci]')
     outputs:
       version_id: ${{ steps.create_version.outputs.version_id }}
       version_number: ${{ steps.create_version.outputs.version_number }}
+      created: ${{ steps.changes.outputs.changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check if source changed
@@ -57,9 +60,6 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "Manual trigger - will create package"
-          elif [ "${{ needs.release-please.outputs.release_created }}" == "true" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Release created - will create package"
           else
             # Check if src/ changed in this commit
             CHANGED=$(git diff --name-only HEAD~1 HEAD -- src/ 2>/dev/null || echo "")
@@ -71,22 +71,6 @@ jobs:
               echo "No source changes - skipping package creation"
             fi
           fi
-
-      - name: Update version from Release Please
-        if: steps.changes.outputs.changed == 'true' && needs.release-please.outputs.release_created == 'true'
-        run: |
-          VERSION="${{ needs.release-please.outputs.version }}"
-          echo "Setting version to: $VERSION (from Release Please)"
-
-          # Update sfdx-project.json with release version
-          jq --arg v "${VERSION}.NEXT" '.packageDirectories[0].versionNumber = $v' sfdx-project.json > tmp.json
-          mv tmp.json sfdx-project.json
-
-          jq --arg v "ver ${VERSION}" '.packageDirectories[0].versionName = $v' sfdx-project.json > tmp.json
-          mv tmp.json sfdx-project.json
-
-          echo "Updated sfdx-project.json:"
-          cat sfdx-project.json
 
       - name: Show current version
         if: steps.changes.outputs.changed == 'true'
@@ -107,7 +91,7 @@ jobs:
           sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
           rm auth.txt
 
-      - name: Create Package Version
+      - name: Create Package Version (Beta)
         id: create_version
         if: steps.changes.outputs.changed == 'true'
         run: |
@@ -139,10 +123,10 @@ jobs:
 
           echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
-          echo "::notice::Package version created: $VERSION_ID ($VERSION_NUMBER)"
+          echo "::notice::Beta package version created: $VERSION_ID ($VERSION_NUMBER)"
 
       - name: Comment on Commit
-        if: steps.changes.outputs.changed == 'true' && github.event_name == 'push' && needs.release-please.outputs.release_created != 'true'
+        if: steps.changes.outputs.changed == 'true' && github.event_name == 'push'
         uses: actions/github-script@v7
         with:
           script: |
@@ -156,24 +140,21 @@ jobs:
       - name: Summary
         if: steps.changes.outputs.changed == 'true'
         run: |
-          if [ "${{ needs.release-please.outputs.release_created }}" == "true" ]; then
-            echo "## 🚀 Release Package Created" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## 📦 Beta Package Created" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "## 📦 Beta Package Created" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** \`${{ steps.create_version.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Package ID:** \`${{ steps.create_version.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Install command:" >> $GITHUB_STEP_SUMMARY
+          echo "### Install in sandbox:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "sf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-org-alias --wait 10" >> $GITHUB_STEP_SUMMARY
+          echo "sf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
+  # Promote latest beta when Release PR is merged
   promote-package:
     runs-on: ubuntu-latest
-    needs: [release-please, create-package]
-    if: needs.release-please.outputs.release_created == 'true' && needs.create-package.outputs.version_id != ''
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -187,10 +168,31 @@ jobs:
           sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
           rm auth.txt
 
+      - name: Find Latest Beta Package
+        id: find_beta
+        run: |
+          echo "Finding latest beta package version..."
+
+          VERSION_INFO=$(sf package version list \
+            --packages DuplicateManager \
+            --json | jq -r '.result | map(select(.IsReleased == false)) | sort_by(.CreatedDate) | reverse | .[0]')
+
+          VERSION_ID=$(echo $VERSION_INFO | jq -r '.SubscriberPackageVersionId')
+          VERSION_NUMBER=$(echo $VERSION_INFO | jq -r '.Version')
+
+          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" == "null" ]; then
+            echo "::error::No beta package version found to promote"
+            exit 1
+          fi
+
+          echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+          echo "::notice::Found beta to promote: $VERSION_ID ($VERSION_NUMBER)"
+
       - name: Promote Package Version
         run: |
           sf package version promote \
-            --package ${{ needs.create-package.outputs.version_id }} \
+            --package ${{ steps.find_beta.outputs.version_id }} \
             --no-prompt
           echo "::notice::Package promoted to Released status!"
 
@@ -198,8 +200,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const versionId = '${{ needs.create-package.outputs.version_id }}';
-            const versionNumber = '${{ needs.create-package.outputs.version_number }}';
+            const versionId = '${{ steps.find_beta.outputs.version_id }}';
+            const versionNumber = '${{ steps.find_beta.outputs.version_number }}';
+            const tagName = '${{ needs.release-please.outputs.tag_name }}';
 
             // Find the release by tag
             const releases = await github.rest.repos.listReleases({
@@ -208,9 +211,9 @@ jobs:
               per_page: 5
             });
 
-            const release = releases.data.find(r => r.tag_name === '${{ needs.release-please.outputs.tag_name }}');
+            const release = releases.data.find(r => r.tag_name === tagName);
             if (!release) {
-              console.log('Release not found');
+              console.log('Release not found for tag: ' + tagName);
               return;
             }
 
@@ -228,6 +231,7 @@ jobs:
           echo "## ✅ Package Promoted to Production" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Release:** ${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Package ID:** \`${{ needs.create-package.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.find_beta.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package ID:** \`${{ steps.find_beta.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The package can now be installed in production orgs." >> $GITHUB_STEP_SUMMARY
