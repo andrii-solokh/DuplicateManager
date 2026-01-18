@@ -5,6 +5,20 @@
       "package-name": "DuplicateManager",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "sfdx-project.json",
+          "jsonpath": "$.packageDirectories[0].versionNumber",
+          "glob": false
+        },
+        {
+          "type": "json",
+          "path": "sfdx-project.json",
+          "jsonpath": "$.packageDirectories[0].versionName",
+          "glob": false
+        }
+      ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
