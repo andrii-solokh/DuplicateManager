@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       prs_created: ${{ steps.release.outputs.prs_created }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -30,7 +32,8 @@ jobs:
   create-beta:
     runs-on: ubuntu-latest
     needs: release-please
-    # Run if there's an open release PR (check by querying for it)
+    # Only run if NO release was created (we're accumulating changes, not releasing)
+    if: needs.release-please.outputs.release_created != 'true'
     steps:
       - name: Check for Release PR
         id: check_pr
@@ -181,3 +184,120 @@ jobs:
           echo "## ℹ️ No Beta Package Created" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "No open release PR found. Beta packages are only created when a release PR exists." >> $GITHUB_STEP_SUMMARY
+
+  promote-package:
+    runs-on: ubuntu-latest
+    needs: release-please
+    # Only run when a release was created (release PR was merged)
+    if: needs.release-please.outputs.release_created == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      - name: Authenticate DevHub
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
+          rm auth.txt
+
+      - name: Get Package Version to Promote
+        id: get_version
+        run: |
+          RELEASE_TAG="${{ needs.release-please.outputs.tag_name }}"
+          # Extract version: DuplicateManager-v1.2.0 -> 1.2.0 or v1.2.0 -> 1.2.0
+          RELEASE_VERSION=$(echo "$RELEASE_TAG" | sed 's/.*v//')
+          echo "Finding beta package for release version: $RELEASE_VERSION"
+
+          # Find the latest beta package matching the release version (e.g., 1.2.0.X for v1.2.0)
+          VERSION_INFO=$(sf package version list \
+            --packages DuplicateManager \
+            --json | jq -r --arg ver "$RELEASE_VERSION" \
+            '.result | map(select(.IsReleased == false and (.Version | startswith($ver + ".")))) | sort_by(.CreatedDate) | reverse | .[0]')
+
+          VERSION_ID=$(echo $VERSION_INFO | jq -r '.SubscriberPackageVersionId')
+          VERSION_NUMBER=$(echo $VERSION_INFO | jq -r '.Version')
+
+          # Fallback to any latest beta if no version-specific match
+          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" == "null" ]; then
+            echo "No version-specific beta found, falling back to latest beta..."
+            VERSION_INFO=$(sf package version list \
+              --packages DuplicateManager \
+              --json | jq -r '.result | map(select(.IsReleased == false)) | sort_by(.CreatedDate) | reverse | .[0]')
+
+            VERSION_ID=$(echo $VERSION_INFO | jq -r '.SubscriberPackageVersionId')
+            VERSION_NUMBER=$(echo $VERSION_INFO | jq -r '.Version')
+          fi
+
+          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" == "null" ]; then
+            echo "::error::No beta package version found to promote"
+            exit 1
+          fi
+
+          echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+          echo "::notice::Package to promote: $VERSION_ID ($VERSION_NUMBER)"
+
+      - name: Promote Package Version
+        run: |
+          sf package version promote \
+            --package ${{ steps.get_version.outputs.version_id }} \
+            --no-prompt
+          echo "::notice::Package promoted to Released status!"
+
+      - name: Update Release Notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const versionId = '${{ steps.get_version.outputs.version_id }}';
+            const versionNumber = '${{ steps.get_version.outputs.version_number }}';
+            const tagName = '${{ needs.release-please.outputs.tag_name }}';
+
+            // Find the release by tag
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 5
+            });
+
+            const release = releases.find(r => r.tag_name === tagName);
+            if (!release) {
+              console.log('Release not found for tag:', tagName);
+              return;
+            }
+
+            const installInstructions = [
+              '',
+              '---',
+              '',
+              '## 📦 Salesforce Package',
+              '',
+              `**Version:** \`${versionNumber}\``,
+              `**Package ID:** \`${versionId}\``,
+              '',
+              '### Install Command:',
+              '```bash',
+              `sf package install --package ${versionId} --target-org your-org-alias --wait 10`,
+              '```',
+              '',
+              '> ✅ This version has been promoted and can be installed in production orgs.'
+            ].join('\n');
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              body: (release.body || '') + installInstructions
+            });
+
+      - name: Summary
+        run: |
+          echo "## ✅ Package Promoted to Production" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** ${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.get_version.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package ID:** \`${{ steps.get_version.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The package can now be installed in production orgs." >> $GITHUB_STEP_SUMMARY
