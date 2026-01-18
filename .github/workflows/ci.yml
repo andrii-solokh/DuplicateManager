@@ -3,13 +3,6 @@ name: CI
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      skip_tests:
-        description: "Skip Apex tests (not recommended)"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -18,130 +11,16 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          release-type: simple
-          package-name: DuplicateManager
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
       - name: Release Info
         run: |
           echo "Release created: ${{ steps.release.outputs.release_created }}"
           echo "Tag: ${{ steps.release.outputs.tag_name }}"
           echo "Version: ${{ steps.release.outputs.version }}"
-
-  create-beta:
-    runs-on: ubuntu-latest
-    needs: release-please
-    # Only run if NOT a release (release PR merge) and not skip ci
-    if: |
-      needs.release-please.outputs.release_created != 'true' &&
-      !contains(github.event.head_commit.message, '[skip ci]')
-    outputs:
-      version_id: ${{ steps.create_version.outputs.version_id }}
-      version_number: ${{ steps.create_version.outputs.version_number }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check if source changed
-        id: changes
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Manual trigger - will create package"
-          else
-            # Check if src/ changed in this commit
-            CHANGED=$(git diff --name-only HEAD~1 HEAD -- src/ 2>/dev/null || echo "")
-            if [ -n "$CHANGED" ]; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-              echo "Source files changed: $CHANGED"
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-              echo "No source changes - skipping package creation"
-            fi
-          fi
-
-      - name: Show current version
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          echo "sfdx-project.json:"
-          cat sfdx-project.json
-          echo ""
-          echo "Version: $(jq -r '.packageDirectories[0].versionNumber' sfdx-project.json)"
-
-      - name: Install Salesforce CLI
-        if: steps.changes.outputs.changed == 'true'
-        run: npm install -g @salesforce/cli
-
-      - name: Authenticate DevHub
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
-          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
-          rm auth.txt
-
-      - name: Create Package Version (Beta)
-        id: create_version
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          COVERAGE_FLAG="--code-coverage"
-          if [ "${{ inputs.skip_tests }}" == "true" ]; then
-            COVERAGE_FLAG=""
-          fi
-
-          set +e
-          VERSION_OUTPUT=$(sf package version create \
-            --package DuplicateManager \
-            --installation-key-bypass \
-            --wait 20 \
-            $COVERAGE_FLAG \
-            --json 2>&1)
-          EXIT_CODE=$?
-          set -e
-
-          echo "SF Output: $VERSION_OUTPUT"
-
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "::error::Package version creation failed with exit code $EXIT_CODE"
-            echo "$VERSION_OUTPUT" | jq '.' 2>/dev/null || echo "$VERSION_OUTPUT"
-            exit $EXIT_CODE
-          fi
-
-          VERSION_ID=$(echo $VERSION_OUTPUT | jq -r '.result.SubscriberPackageVersionId')
-          VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.Version')
-
-          echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
-          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
-          echo "::notice::Beta package version created: $VERSION_ID ($VERSION_NUMBER)"
-
-      - name: Comment on Commit
-        if: steps.changes.outputs.changed == 'true' && github.event_name == 'push'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: `📦 **Beta Package Created**\n\nVersion: \`${{ steps.create_version.outputs.version_number }}\`\nPackage ID: \`${{ steps.create_version.outputs.version_id }}\`\n\n**Install in sandbox:**\n\`\`\`bash\nsf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10\n\`\`\`\n\n> ⚠️ This is a beta version and can only be installed in sandboxes. Merge the Release PR to promote for production.`
-            })
-
-      - name: Summary
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          echo "## 📦 Beta Package Created" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ steps.create_version.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Package ID:** \`${{ steps.create_version.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Install in sandbox:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "sf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "PR created: ${{ steps.release.outputs.pr }}"

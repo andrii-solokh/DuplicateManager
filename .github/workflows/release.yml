@@ -40,15 +40,30 @@ jobs:
               --packages DuplicateManager \
               --json | jq -r --arg id "$VERSION_ID" '.result[] | select(.SubscriberPackageVersionId == $id) | .Version')
           else
-            # Find latest beta
-            echo "Finding latest beta package version..."
+            # Find beta matching the release version
+            RELEASE_TAG="${{ github.event.release.tag_name }}"
+            RELEASE_VERSION="${RELEASE_TAG#v}"  # Remove 'v' prefix
+            echo "Finding beta package for release version: $RELEASE_VERSION"
             
+            # Find the latest beta package matching the release version (e.g., 1.2.0.X for v1.2.0)
             VERSION_INFO=$(sf package version list \
               --packages DuplicateManager \
-              --json | jq -r '.result | map(select(.IsReleased == false)) | sort_by(.CreatedDate) | reverse | .[0]')
+              --json | jq -r --arg ver "$RELEASE_VERSION" \
+              '.result | map(select(.IsReleased == false and (.Version | startswith($ver + ".")))) | sort_by(.CreatedDate) | reverse | .[0]')
             
             VERSION_ID=$(echo $VERSION_INFO | jq -r '.SubscriberPackageVersionId')
             VERSION_NUMBER=$(echo $VERSION_INFO | jq -r '.Version')
+            
+            # Fallback to any latest beta if no version-specific match
+            if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" == "null" ]; then
+              echo "No version-specific beta found, falling back to latest beta..."
+              VERSION_INFO=$(sf package version list \
+                --packages DuplicateManager \
+                --json | jq -r '.result | map(select(.IsReleased == false)) | sort_by(.CreatedDate) | reverse | .[0]')
+              
+              VERSION_ID=$(echo $VERSION_INFO | jq -r '.SubscriberPackageVersionId')
+              VERSION_NUMBER=$(echo $VERSION_INFO | jq -r '.Version')
+            fi
           fi
 
           if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" == "null" ]; then
