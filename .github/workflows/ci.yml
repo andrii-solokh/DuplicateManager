@@ -11,6 +11,10 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      pr_created: ${{ steps.release.outputs.prs_created }}
+      pr_number: ${{ steps.get_pr.outputs.pr_number }}
+      pr_branch: ${{ steps.get_pr.outputs.pr_branch }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -18,9 +22,176 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Get PR Info
+        id: get_pr
+        run: |
+          if [ -n '${{ steps.release.outputs.prs_created }}' ] && [ '${{ steps.release.outputs.prs_created }}' != '[]' ]; then
+            PR_NUMBER=$(echo '${{ steps.release.outputs.prs_created }}' | jq -r '.[0].number')
+            PR_BRANCH=$(echo '${{ steps.release.outputs.prs_created }}' | jq -r '.[0].headBranchName')
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "pr_branch=$PR_BRANCH" >> $GITHUB_OUTPUT
+            echo "::notice::Release PR #$PR_NUMBER created/updated on branch $PR_BRANCH"
+          else
+            echo "::notice::No release PR created in this run"
+          fi
+
       - name: Release Info
         run: |
           echo "Release created: ${{ steps.release.outputs.release_created }}"
           echo "Tag: ${{ steps.release.outputs.tag_name }}"
           echo "Version: ${{ steps.release.outputs.version }}"
-          echo "PR created: ${{ steps.release.outputs.pr }}"
+
+  create-beta:
+    runs-on: ubuntu-latest
+    needs: release-please
+    # Run if there's an open release PR (check by querying for it)
+    steps:
+      - name: Check for Release PR
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find open release-please PR
+          PR_INFO=$(gh pr list --repo ${{ github.repository }} --state open --json number,headRefName,title \
+            --jq '.[] | select(.headRefName | startswith("release-please--branches--main"))' | head -1)
+
+          if [ -n "$PR_INFO" ]; then
+            PR_NUMBER=$(echo "$PR_INFO" | jq -r '.number')
+            PR_BRANCH=$(echo "$PR_INFO" | jq -r '.headRefName')
+            echo "pr_exists=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "pr_branch=$PR_BRANCH" >> $GITHUB_OUTPUT
+            echo "::notice::Found release PR #$PR_NUMBER on branch $PR_BRANCH"
+          else
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+            echo "::notice::No open release PR found - skipping beta creation"
+          fi
+
+      - name: Checkout PR branch
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.check_pr.outputs.pr_branch }}
+
+      - name: Get version from PR
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        id: version
+        run: |
+          VERSION=$(jq -r '."."' .release-please-manifest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "::notice::Creating beta package for version $VERSION"
+
+      - name: Install Salesforce CLI
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        run: npm install -g @salesforce/cli
+
+      - name: Authenticate DevHub
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url --sfdx-url-file auth.txt --set-default-dev-hub --alias devhub
+          rm auth.txt
+
+      - name: Create Package Version (Beta)
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        id: create_version
+        run: |
+          set +e
+          VERSION_OUTPUT=$(sf package version create \
+            --package DuplicateManager \
+            --installation-key-bypass \
+            --wait 20 \
+            --code-coverage \
+            --json 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          echo "SF Output: $VERSION_OUTPUT"
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "::error::Package version creation failed with exit code $EXIT_CODE"
+            echo "$VERSION_OUTPUT" | jq '.' 2>/dev/null || echo "$VERSION_OUTPUT"
+            exit $EXIT_CODE
+          fi
+
+          VERSION_ID=$(echo $VERSION_OUTPUT | jq -r '.result.SubscriberPackageVersionId')
+          VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.Version')
+
+          echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+          echo "::notice::Beta package version created: $VERSION_ID ($VERSION_NUMBER)"
+
+      - name: Comment on PR
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const versionId = '${{ steps.create_version.outputs.version_id }}';
+            const versionNumber = '${{ steps.create_version.outputs.version_number }}';
+            const releaseVersion = '${{ steps.version.outputs.version }}';
+            const prNumber = parseInt('${{ steps.check_pr.outputs.pr_number }}');
+
+            const body = [
+              '## 📦 Beta Package Ready for Testing',
+              '',
+              `**Release Version:** \`${releaseVersion}\``,
+              `**Package Version:** \`${versionNumber}\``,
+              `**Package ID:** \`${versionId}\``,
+              '',
+              '### Install in sandbox:',
+              '```bash',
+              `sf package install --package ${versionId} --target-org your-sandbox-alias --wait 10`,
+              '```',
+              '',
+              '> ⚠️ This is a beta version for testing. Merge this PR to create the official release and promote the package for production installation.'
+            ].join('\n');
+
+            // Find and update existing comment or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+
+            const botComment = comments.find(c => 
+              c.user.type === 'Bot' && 
+              c.body.includes('Beta Package Ready for Testing')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+            }
+
+      - name: Summary
+        if: steps.check_pr.outputs.pr_exists == 'true'
+        run: |
+          echo "## 📦 Beta Package Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release PR:** #${{ steps.check_pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Version:** \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package Version:** \`${{ steps.create_version.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package ID:** \`${{ steps.create_version.outputs.version_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install in sandbox:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "sf package install --package ${{ steps.create_version.outputs.version_id }} --target-org your-sandbox-alias --wait 10" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: No PR Summary
+        if: steps.check_pr.outputs.pr_exists != 'true'
+        run: |
+          echo "## ℹ️ No Beta Package Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No open release PR found. Beta packages are only created when a release PR exists." >> $GITHUB_STEP_SUMMARY
