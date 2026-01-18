@@ -8,15 +8,18 @@
       "extra-files": [
         {
           "type": "json",
-          "path": "sfdx-project.json",
-          "jsonpath": "$.packageDirectories[0].versionNumber",
-          "glob": false
+          "path": "package.json",
+          "jsonpath": "$.version"
         },
         {
           "type": "json",
           "path": "sfdx-project.json",
-          "jsonpath": "$.packageDirectories[0].versionName",
-          "glob": false
+          "jsonpath": "$.packageDirectories[0].versionNumber"
+        },
+        {
+          "type": "json",
+          "path": "sfdx-project.json",
+          "jsonpath": "$.packageDirectories[0].versionName"
         }
       ],
       "changelog-sections": [
