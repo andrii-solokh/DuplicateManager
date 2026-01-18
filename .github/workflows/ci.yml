@@ -12,9 +12,7 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      pr_created: ${{ steps.release.outputs.prs_created }}
-      pr_number: ${{ steps.get_pr.outputs.pr_number }}
-      pr_branch: ${{ steps.get_pr.outputs.pr_branch }}
+      prs_created: ${{ steps.release.outputs.prs_created }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -22,22 +20,10 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - name: Get PR Info
-        id: get_pr
-        run: |
-          if [ -n '${{ steps.release.outputs.prs_created }}' ] && [ '${{ steps.release.outputs.prs_created }}' != '[]' ]; then
-            PR_NUMBER=$(echo '${{ steps.release.outputs.prs_created }}' | jq -r '.[0].number')
-            PR_BRANCH=$(echo '${{ steps.release.outputs.prs_created }}' | jq -r '.[0].headBranchName')
-            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-            echo "pr_branch=$PR_BRANCH" >> $GITHUB_OUTPUT
-            echo "::notice::Release PR #$PR_NUMBER created/updated on branch $PR_BRANCH"
-          else
-            echo "::notice::No release PR created in this run"
-          fi
-
       - name: Release Info
         run: |
           echo "Release created: ${{ steps.release.outputs.release_created }}"
+          echo "PRs created: ${{ steps.release.outputs.prs_created }}"
           echo "Tag: ${{ steps.release.outputs.tag_name }}"
           echo "Version: ${{ steps.release.outputs.version }}"
 
