@@ -1,8 +1,8 @@
 {
   "packageDirectories": [
     {
-      "versionName": "ver 1.2.1",
-      "versionNumber": "1.2.1.NEXT",
+      "versionName": "ver 1.2.2",
+      "versionNumber": "1.2.2.NEXT",
       "path": "src",
       "default": true,
       "package": "DuplicateManager",
