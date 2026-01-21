@@ -144,7 +144,7 @@ export default class DuplicateMergeModal extends NavigationMixin(
   }
 
   get totalFieldCount() {
-    return this.fields.length;
+    return this.fields.filter((f) => !f.allEmpty).length;
   }
 
   get noFieldsVisible() {
@@ -243,7 +243,7 @@ export default class DuplicateMergeModal extends NavigationMixin(
   async handleMerge() {
     if (this.isMergeDisabled) return;
 
-    // eslint-disable-next-line no-alert
+    // eslint-disable-next-line no-alert, no-restricted-globals
     const confirmed = confirm(
       `Are you sure you want to merge ${this.records.length - 1} record(s) into "${this.masterRecordName}"?\n\n` +
         "This action cannot be undone. The duplicate records will be deleted."

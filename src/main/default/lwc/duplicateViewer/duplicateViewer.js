@@ -1,7 +1,6 @@
 import { LightningElement, track, wire } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
-import getDuplicateSets from "@salesforce/apex/DuplicateViewerController.getDuplicateSets";
-import getDuplicateItems from "@salesforce/apex/DuplicateViewerController.getDuplicateItems";
+import getDuplicateSetPreviews from "@salesforce/apex/DuplicateViewerController.getDuplicateSetPreviews";
 import getObjectTypeOptions from "@salesforce/apex/DuplicateViewerController.getObjectTypeOptions";
 import getDuplicateSummary from "@salesforce/apex/DuplicateViewerController.getDuplicateSummary";
 import deleteDuplicateSet from "@salesforce/apex/DuplicateViewerController.deleteDuplicateSet";
@@ -19,7 +18,6 @@ const JOB_POLL_INTERVAL = 2000; // 2 seconds
 export default class DuplicateViewer extends LightningElement {
   // Data
   @track duplicateSets = [];
-  @track selectedSetItems = [];
   @track objectTypeOptions = [];
   @track summary = {
     totalSets: 0,
@@ -33,12 +31,10 @@ export default class DuplicateViewer extends LightningElement {
   // State
   @track isLoading = true;
   @track isRefreshing = false;
-  @track isLoadingItems = false;
   @track error = null;
   @track selectedObjectType = "All";
-  @track showDetailModal = false;
-  @track selectedSetId = null;
   @track showJobPanel = false;
+  @track searchTerm = "";
 
   // Merge Modal State
   @track showMergeModal = false;
@@ -55,6 +51,9 @@ export default class DuplicateViewer extends LightningElement {
 
   // Job polling
   _jobPollInterval = null;
+
+  // Search debounce
+  _searchDebounceTimeout = null;
 
   // =========================================================================
   // LIFECYCLE
@@ -89,23 +88,6 @@ export default class DuplicateViewer extends LightningElement {
   // =========================================================================
 
   async loadAllData() {
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "duplicateViewer.js:loadAllData:entry",
-        message: "loadAllData called",
-        data: {
-          hasRunningJob: this.currentJob && !this.currentJob.isComplete,
-          currentJobStatus: this.currentJob?.status
-        },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: "D"
-      })
-    }).catch(() => {});
-    // #endregion
     this.isLoading = true;
     this.error = null;
 
@@ -118,39 +100,131 @@ export default class DuplicateViewer extends LightningElement {
     } catch (err) {
       this.error = this.extractErrorMessage(err);
     } finally {
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "duplicateViewer.js:loadAllData:exit",
-            message: "loadAllData completed",
-            data: {
-              isLoading: false,
-              hasRunningJob: this.currentJob && !this.currentJob.isComplete
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            hypothesisId: "D"
-          })
-        }
-      ).catch(() => {});
-      // #endregion
       this.isLoading = false;
       this.isRefreshing = false;
     }
   }
 
   async loadDuplicateSets() {
-    const result = await getDuplicateSets({
+    const result = await getDuplicateSetPreviews({
       objectType: this.selectedObjectType,
+      searchTerm: this.searchTerm,
       limitCount: PAGE_SIZE,
       offsetCount: (this.currentPage - 1) * PAGE_SIZE
     });
 
-    this.duplicateSets = result.duplicateSets || [];
+    // Process preview data for display
+    const processedSets = (result.duplicateSets || []).map((set) => {
+      const processedSet = { ...set };
+
+      // Process sample records and calculate differing/identical fields
+      if (set.sampleRecords && set.sampleRecords.length > 0) {
+        // Build field displays for compact view
+        const differingFieldDisplays = [];
+        const identicalFieldDisplays = [];
+        const firstRecord = set.sampleRecords[0];
+        const secondRecord = set.sampleRecords[1];
+
+        // If we have fieldDifferences from server, use that
+        const labels = set.fieldLabels || {};
+        if (set.fieldDifferences) {
+          for (const fieldName in set.fieldDifferences) {
+            if (
+              Object.prototype.hasOwnProperty.call(
+                set.fieldDifferences,
+                fieldName
+              )
+            ) {
+              const value1 = firstRecord?.fieldValues?.[fieldName];
+              const value2 = secondRecord?.fieldValues?.[fieldName];
+              const label = labels[fieldName] || fieldName;
+
+              if (set.fieldDifferences[fieldName] === true && secondRecord) {
+                // Field has different values - show comparison
+                differingFieldDisplays.push({
+                  fieldName: fieldName,
+                  label: label,
+                  value1: this.formatFieldValue(value1),
+                  value2: this.formatFieldValue(value2)
+                });
+              } else {
+                // Field has identical values - show once
+                identicalFieldDisplays.push({
+                  fieldName: fieldName,
+                  label: label,
+                  value: this.formatFieldValue(value1)
+                });
+              }
+            }
+          }
+        } else if (firstRecord?.fieldValues) {
+          // Fallback: no fieldDifferences, just show first record's fields once
+          const fallbackLabels = set.fieldLabels || {};
+          for (const fieldName in firstRecord.fieldValues) {
+            if (
+              Object.prototype.hasOwnProperty.call(
+                firstRecord.fieldValues,
+                fieldName
+              )
+            ) {
+              const value = firstRecord.fieldValues[fieldName];
+              const label = fallbackLabels[fieldName] || fieldName;
+              identicalFieldDisplays.push({
+                fieldName: fieldName,
+                label: label,
+                value: this.formatFieldValue(value)
+              });
+            }
+          }
+        }
+
+        processedSet.differingFieldDisplays = differingFieldDisplays;
+        processedSet.identicalFieldDisplays = identicalFieldDisplays;
+        processedSet.hasDifferences = differingFieldDisplays.length > 0;
+        processedSet.hasIdenticalFields = identicalFieldDisplays.length > 0;
+        processedSet.hasAnyFields =
+          differingFieldDisplays.length > 0 ||
+          identicalFieldDisplays.length > 0;
+        // Store first record name for display (LWC templates don't allow array index access)
+        processedSet.firstRecordName = firstRecord?.recordName || "";
+
+        // Also keep the original fieldDisplays for the first record
+        processedSet.sampleRecords = set.sampleRecords.map((record) => {
+          const fieldDisplays = [];
+
+          if (record.fieldValues && set.fieldLabels) {
+            for (const fieldName in record.fieldValues) {
+              if (
+                Object.prototype.hasOwnProperty.call(
+                  record.fieldValues,
+                  fieldName
+                )
+              ) {
+                const value = record.fieldValues[fieldName];
+                const label = set.fieldLabels[fieldName] || fieldName;
+                const displayValue = this.formatFieldValue(value);
+
+                fieldDisplays.push({
+                  apiName: fieldName,
+                  label: label,
+                  displayValue: displayValue,
+                  fullValue: String(value || "")
+                });
+              }
+            }
+          }
+
+          return {
+            ...record,
+            fieldDisplays: fieldDisplays
+          };
+        });
+      }
+
+      return processedSet;
+    });
+
+    this.duplicateSets = processedSets;
     this.totalCount = result.totalCount || 0;
   }
 
@@ -175,18 +249,6 @@ export default class DuplicateViewer extends LightningElement {
     }
   }
 
-  async loadSetItems(setId) {
-    this.isLoadingItems = true;
-    try {
-      const items = await getDuplicateItems({ duplicateSetId: setId });
-      this.selectedSetItems = items || [];
-    } catch (err) {
-      this.showToast("Error", this.extractErrorMessage(err), "error");
-    } finally {
-      this.isLoadingItems = false;
-    }
-  }
-
   // =========================================================================
   // JOB POLLING
   // =========================================================================
@@ -197,30 +259,6 @@ export default class DuplicateViewer extends LightningElement {
     this._jobPollInterval = setInterval(async () => {
       try {
         const status = await getJobStatus({ jobId });
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "duplicateViewer.js:startJobPolling",
-              message: "Job status polled",
-              data: {
-                jobId,
-                status: status.status,
-                progressPercent: status.progressPercent,
-                totalJobItems: status.totalJobItems,
-                jobItemsProcessed: status.jobItemsProcessed,
-                isComplete: status.isComplete
-              },
-              timestamp: Date.now(),
-              sessionId: "debug-session",
-              hypothesisId: "A-B"
-            })
-          }
-        ).catch(() => {});
-        // #endregion
         this.currentJob = status;
 
         if (status.isComplete) {
@@ -290,26 +328,7 @@ export default class DuplicateViewer extends LightningElement {
   }
 
   get hasRunningJob() {
-    const result = this.currentJob && !this.currentJob.isComplete;
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "duplicateViewer.js:hasRunningJob",
-        message: "hasRunningJob computed",
-        data: {
-          result,
-          currentJob: this.currentJob,
-          isLoading: this.isLoading
-        },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: "D-E"
-      })
-    }).catch(() => {});
-    // #endregion
-    return result;
+    return this.currentJob && !this.currentJob.isComplete;
   }
 
   get runningJobStatus() {
@@ -344,6 +363,23 @@ export default class DuplicateViewer extends LightningElement {
     return `width: ${percent}%`;
   }
 
+  get filteredDuplicateSets() {
+    // Server now handles filtering via SOQL, just return the results
+    return this.duplicateSets;
+  }
+
+  get searchResultsMessage() {
+    if (!this.searchTerm) {
+      return "";
+    }
+    // Now shows server-filtered results count
+    return `Found ${this.totalCount} set${this.totalCount !== 1 ? "s" : ""} matching "${this.searchTerm}"`;
+  }
+
+  get showSearchResults() {
+    return this.searchTerm && this.searchTerm.length > 0;
+  }
+
   // =========================================================================
   // EVENT HANDLERS
   // =========================================================================
@@ -353,6 +389,18 @@ export default class DuplicateViewer extends LightningElement {
     this.currentPage = 1;
     this.isLoading = true;
     this.loadAllData();
+  }
+
+  handleSearchChange(event) {
+    this.searchTerm = event.target.value;
+
+    // Debounce server calls (300ms delay)
+    clearTimeout(this._searchDebounceTimeout);
+    this._searchDebounceTimeout = setTimeout(() => {
+      this.currentPage = 1; // Reset to first page on new search
+      this.isLoading = true;
+      this.loadAllData();
+    }, 300);
   }
 
   async handleRefresh() {
@@ -394,23 +442,6 @@ export default class DuplicateViewer extends LightningElement {
       const jobId = await runDuplicateScan({
         objectType: this.selectedObjectType
       });
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/008962bd-de2d-45a4-a949-14eef333f218",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "duplicateViewer.js:handleRunScan",
-            message: "Scan started",
-            data: { jobId, objectType: this.selectedObjectType },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            hypothesisId: "A-C"
-          })
-        }
-      ).catch(() => {});
-      // #endregion
 
       this.scanningObjectType = this.selectedObjectType;
       this.currentJob = {
@@ -464,9 +495,9 @@ export default class DuplicateViewer extends LightningElement {
     ) {
       return;
     }
-    this.selectedSetId = setId;
-    this.showDetailModal = true;
-    this.loadSetItems(setId);
+    // Navigate directly to merge modal
+    this.mergeSetId = setId;
+    this.showMergeModal = true;
   }
 
   handleMergeClick(event) {
@@ -538,19 +569,6 @@ export default class DuplicateViewer extends LightningElement {
       this.currentPage++;
       this.isLoading = true;
       this.loadAllData();
-    }
-  }
-
-  closeDetailModal() {
-    this.showDetailModal = false;
-    this.selectedSetId = null;
-    this.selectedSetItems = [];
-  }
-
-  handleOpenRecord(event) {
-    const url = event.currentTarget.dataset.url;
-    if (url) {
-      window.open(url, "_blank");
     }
   }
 
@@ -657,6 +675,37 @@ export default class DuplicateViewer extends LightningElement {
   // =========================================================================
   // UTILITIES
   // =========================================================================
+
+  formatFieldValue(value) {
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    // Handle boolean values
+    if (typeof value === "boolean") {
+      return value ? "Yes" : "No";
+    }
+
+    // Handle dates
+    if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString();
+        }
+      } catch (e) {
+        // Not a valid date, continue
+      }
+    }
+
+    // Handle long strings (truncate for display)
+    const strValue = String(value);
+    if (strValue.length > 50) {
+      return strValue.substring(0, 50) + "...";
+    }
+
+    return strValue;
+  }
 
   extractErrorMessage(error) {
     if (typeof error === "string") {

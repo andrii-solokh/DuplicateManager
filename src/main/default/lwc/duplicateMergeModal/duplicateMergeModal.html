@@ -28,9 +28,6 @@
           ></lightning-icon>
           Merge Duplicate Records
         </h2>
-        <p class="header-subtitle">
-          Select the master record and choose values for each field
-        </p>
       </div>
 
       <!-- Content -->
@@ -110,12 +107,12 @@
                       onclick={handleMasterSelect}
                       data-id={record.recordId}
                     >
+                      <lightning-icon
+                        icon-name="utility:check"
+                        size="x-small"
+                        class="master-check"
+                      ></lightning-icon>
                       <div class="master-card-content">
-                        <lightning-icon
-                          icon-name="utility:check"
-                          size="x-small"
-                          class="master-check"
-                        ></lightning-icon>
                         <span class="master-name">{record.recordName}</span>
                       </div>
                       <span class="master-id">{record.recordId}</span>
@@ -137,10 +134,22 @@
                     class="search-input"
                   >
                   </lightning-input>
+                  <span class="stat-item total">
+                    Showing <strong>{visibleFieldCount}</strong> of
+                    <strong>{totalFieldCount}</strong> fields
+                  </span>
+                  <div class="filter-stats">
+                    <span class="stat-item differences">
+                      <strong>{differenceCount}</strong> different
+                    </span>
+                    <span class="stat-item same">
+                      <strong>{sameCount}</strong> same
+                    </span>
+                  </div>
                   <div class="filter-toggles">
                     <lightning-button-group>
                       <lightning-button
-                        label="Differences"
+                        label="Different"
                         variant={differencesButtonVariant}
                         onclick={handleShowDifferences}
                         icon-name="utility:warning"
@@ -153,30 +162,8 @@
                         icon-name="utility:check"
                       >
                       </lightning-button>
-                      <lightning-button
-                        label="Empty"
-                        variant={emptyButtonVariant}
-                        onclick={handleShowEmpty}
-                        icon-name="utility:dash"
-                      >
-                      </lightning-button>
                     </lightning-button-group>
                   </div>
-                </div>
-                <div class="filter-stats">
-                  <span class="stat-item differences">
-                    <strong>{differenceCount}</strong> differences
-                  </span>
-                  <span class="stat-item same">
-                    <strong>{sameCount}</strong> same
-                  </span>
-                  <span class="stat-item empty">
-                    <strong>{emptyCount}</strong> empty
-                  </span>
-                  <span class="stat-item total">
-                    Showing <strong>{visibleFieldCount}</strong> of
-                    <strong>{totalFieldCount}</strong> fields
-                  </span>
                 </div>
               </div>
 

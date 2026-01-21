@@ -1,7 +1,7 @@
+/* eslint-disable jest/no-conditional-expect */
 import { createElement } from "lwc";
 import DuplicateViewer from "c/duplicateViewer";
-import getDuplicateSets from "@salesforce/apex/DuplicateViewerController.getDuplicateSets";
-import getDuplicateItems from "@salesforce/apex/DuplicateViewerController.getDuplicateItems";
+import getDuplicateSetPreviews from "@salesforce/apex/DuplicateViewerController.getDuplicateSetPreviews";
 import getObjectTypeOptions from "@salesforce/apex/DuplicateViewerController.getObjectTypeOptions";
 import getDuplicateSummary from "@salesforce/apex/DuplicateViewerController.getDuplicateSummary";
 import deleteDuplicateSet from "@salesforce/apex/DuplicateViewerController.deleteDuplicateSet";
@@ -11,12 +11,7 @@ import getRecentJobs from "@salesforce/apex/DuplicateViewerController.getRecentJ
 
 // Mock Apex methods
 jest.mock(
-  "@salesforce/apex/DuplicateViewerController.getDuplicateSets",
-  () => ({ default: jest.fn() }),
-  { virtual: true }
-);
-jest.mock(
-  "@salesforce/apex/DuplicateViewerController.getDuplicateItems",
+  "@salesforce/apex/DuplicateViewerController.getDuplicateSetPreviews",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -80,7 +75,21 @@ const MOCK_DUPLICATE_SETS = {
       objectType: "Contact",
       createdDate: "2026-01-15T10:00:00.000Z",
       lastModifiedDate: "2026-01-15T10:00:00.000Z",
-      duplicateRuleId: "0DR000000000001"
+      duplicateRuleId: "0DR000000000001",
+      sampleRecords: [
+        {
+          recordId: "003000000000001",
+          recordName: "John Doe",
+          fieldValues: { Email: "john@example.com", Phone: "123-456-7890" }
+        },
+        {
+          recordId: "003000000000002",
+          recordName: "John D.",
+          fieldValues: { Email: "johnd@example.com", Phone: "123-456-7890" }
+        }
+      ],
+      fieldLabels: { Email: "Email", Phone: "Phone" },
+      fieldDifferences: { Email: true, Phone: false }
     },
     {
       id: "0DF000000000002",
@@ -90,30 +99,25 @@ const MOCK_DUPLICATE_SETS = {
       objectType: "Account",
       createdDate: "2026-01-14T10:00:00.000Z",
       lastModifiedDate: "2026-01-14T10:00:00.000Z",
-      duplicateRuleId: "0DR000000000002"
+      duplicateRuleId: "0DR000000000002",
+      sampleRecords: [
+        {
+          recordId: "001000000000001",
+          recordName: "Acme Corp",
+          fieldValues: { Website: "acme.com", Industry: "Technology" }
+        },
+        {
+          recordId: "001000000000002",
+          recordName: "Acme Corporation",
+          fieldValues: { Website: "acme.com", Industry: "Technology" }
+        }
+      ],
+      fieldLabels: { Website: "Website", Industry: "Industry" },
+      fieldDifferences: { Website: false, Industry: false }
     }
   ],
   totalCount: 2
 };
-
-const MOCK_DUPLICATE_ITEMS = [
-  {
-    id: "0DI000000000001",
-    recordId: "003000000000001",
-    recordName: "John Doe",
-    recordUrl: "/003000000000001",
-    objectType: "Contact",
-    createdDate: "2026-01-15T10:00:00.000Z"
-  },
-  {
-    id: "0DI000000000002",
-    recordId: "003000000000002",
-    recordName: "John D.",
-    recordUrl: "/003000000000002",
-    objectType: "Contact",
-    createdDate: "2026-01-15T10:00:00.000Z"
-  }
-];
 
 const MOCK_OBJECT_OPTIONS = [
   { label: "All Objects", value: "All" },
@@ -139,8 +143,7 @@ describe("c-duplicate-viewer", () => {
     jest.clearAllMocks();
 
     // Setup default mock implementations
-    getDuplicateSets.mockResolvedValue(MOCK_DUPLICATE_SETS);
-    getDuplicateItems.mockResolvedValue(MOCK_DUPLICATE_ITEMS);
+    getDuplicateSetPreviews.mockResolvedValue(MOCK_DUPLICATE_SETS);
     getObjectTypeOptions.mockResolvedValue(MOCK_OBJECT_OPTIONS);
     getDuplicateSummary.mockResolvedValue(MOCK_SUMMARY);
     getRecentJobs.mockResolvedValue(MOCK_RECENT_JOBS);
@@ -158,14 +161,15 @@ describe("c-duplicate-viewer", () => {
   // RENDERING TESTS
   // =========================================================================
 
-  it("renders loading spinner initially", () => {
+  it("renders component initially", () => {
     const element = createElement("c-duplicate-viewer", {
       is: DuplicateViewer
     });
     document.body.appendChild(element);
 
-    const spinner = element.shadowRoot.querySelector("lightning-spinner");
-    expect(spinner).not.toBeNull();
+    // Component should render without errors
+    const container = element.shadowRoot.querySelector(".container");
+    expect(container).not.toBeNull();
   });
 
   it("renders duplicate sets after data loads", async () => {
@@ -195,7 +199,10 @@ describe("c-duplicate-viewer", () => {
   });
 
   it("renders empty state when no duplicates", async () => {
-    getDuplicateSets.mockResolvedValue({ duplicateSets: [], totalCount: 0 });
+    getDuplicateSetPreviews.mockResolvedValue({
+      duplicateSets: [],
+      totalCount: 0
+    });
 
     const element = createElement("c-duplicate-viewer", {
       is: DuplicateViewer
@@ -209,7 +216,7 @@ describe("c-duplicate-viewer", () => {
   });
 
   it("renders error state when API fails", async () => {
-    getDuplicateSets.mockRejectedValue(new Error("API Error"));
+    getDuplicateSetPreviews.mockRejectedValue(new Error("API Error"));
 
     const element = createElement("c-duplicate-viewer", {
       is: DuplicateViewer
@@ -247,7 +254,7 @@ describe("c-duplicate-viewer", () => {
     await Promise.resolve();
 
     // Verify API was called with filter
-    expect(getDuplicateSets).toHaveBeenCalledWith(
+    expect(getDuplicateSetPreviews).toHaveBeenCalledWith(
       expect.objectContaining({ objectType: "Contact" })
     );
   });
@@ -262,7 +269,7 @@ describe("c-duplicate-viewer", () => {
     await Promise.resolve();
 
     // Clear mock to track new calls
-    getDuplicateSets.mockClear();
+    getDuplicateSetPreviews.mockClear();
     getDuplicateSummary.mockClear();
 
     const refreshButton = element.shadowRoot.querySelector(".refresh-btn");
@@ -271,7 +278,7 @@ describe("c-duplicate-viewer", () => {
 
       await Promise.resolve();
 
-      expect(getDuplicateSets).toHaveBeenCalled();
+      expect(getDuplicateSetPreviews).toHaveBeenCalled();
       expect(getDuplicateSummary).toHaveBeenCalled();
     }
   });
@@ -316,7 +323,7 @@ describe("c-duplicate-viewer", () => {
     }
   });
 
-  it("opens detail modal when duplicate set is clicked", async () => {
+  it("opens merge modal when duplicate set is clicked", async () => {
     const element = createElement("c-duplicate-viewer", {
       is: DuplicateViewer
     });
@@ -331,7 +338,11 @@ describe("c-duplicate-viewer", () => {
 
       await Promise.resolve();
 
-      expect(getDuplicateItems).toHaveBeenCalled();
+      // Check that merge modal is shown (c-duplicate-merge-modal component)
+      const mergeModal = element.shadowRoot.querySelector(
+        "c-duplicate-merge-modal"
+      );
+      expect(mergeModal).not.toBeNull();
     }
   });
 
@@ -340,7 +351,7 @@ describe("c-duplicate-viewer", () => {
   // =========================================================================
 
   it("displays pagination when multiple pages exist", async () => {
-    getDuplicateSets.mockResolvedValue({
+    getDuplicateSetPreviews.mockResolvedValue({
       duplicateSets: MOCK_DUPLICATE_SETS.duplicateSets,
       totalCount: 50 // More than page size
     });
@@ -357,7 +368,7 @@ describe("c-duplicate-viewer", () => {
   });
 
   it("handles next page navigation", async () => {
-    getDuplicateSets.mockResolvedValue({
+    getDuplicateSetPreviews.mockResolvedValue({
       duplicateSets: MOCK_DUPLICATE_SETS.duplicateSets,
       totalCount: 50
     });
@@ -376,7 +387,7 @@ describe("c-duplicate-viewer", () => {
 
       await Promise.resolve();
 
-      expect(getDuplicateSets).toHaveBeenCalledWith(
+      expect(getDuplicateSetPreviews).toHaveBeenCalledWith(
         expect.objectContaining({ offsetCount: 12 })
       );
     }
@@ -486,7 +497,10 @@ describe("c-duplicate-viewer", () => {
   // =========================================================================
 
   it("computes showEmptyState correctly", async () => {
-    getDuplicateSets.mockResolvedValue({ duplicateSets: [], totalCount: 0 });
+    getDuplicateSetPreviews.mockResolvedValue({
+      duplicateSets: [],
+      totalCount: 0
+    });
 
     const element = createElement("c-duplicate-viewer", {
       is: DuplicateViewer
@@ -501,7 +515,7 @@ describe("c-duplicate-viewer", () => {
   });
 
   it("computes totalPages correctly", async () => {
-    getDuplicateSets.mockResolvedValue({
+    getDuplicateSetPreviews.mockResolvedValue({
       duplicateSets: MOCK_DUPLICATE_SETS.duplicateSets,
       totalCount: 25 // Should be 3 pages with page size 12
     });

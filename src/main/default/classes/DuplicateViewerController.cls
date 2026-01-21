@@ -10,6 +10,7 @@ public with sharing class DuplicateViewerController {
    * @description Retrieves duplicate record sets with their associated items.
    *              NOT cacheable to ensure fresh data on refresh.
    * @param objectType Optional filter for specific object type (e.g., 'Contact', 'Account')
+   * @param searchTerm Optional search term to filter by name or rule label
    * @param limitCount Maximum number of sets to return
    * @param offsetCount Offset for pagination
    * @return List of DuplicateSetWrapper containing set info and items
@@ -17,6 +18,7 @@ public with sharing class DuplicateViewerController {
   @AuraEnabled
   public static DuplicateDataResult getDuplicateSets(
     String objectType,
+    String searchTerm,
     Integer limitCount,
     Integer offsetCount
   ) {
@@ -29,8 +31,26 @@ public with sharing class DuplicateViewerController {
         'DuplicateRule.SobjectType, CreatedDate, LastModifiedDate ' +
         'FROM DuplicateRecordSet ';
 
+      List<String> whereClauses = new List<String>();
+
+      // Exclude sets without records
+      whereClauses.add('RecordCount > 0');
+
       if (String.isNotBlank(objectType) && objectType != 'All') {
-        query += 'WHERE DuplicateRule.SobjectType = :objectType ';
+        whereClauses.add('DuplicateRule.SobjectType = :objectType');
+      }
+
+      // Add search filter
+      String searchPattern = null;
+      if (String.isNotBlank(searchTerm)) {
+        searchPattern = '%' + String.escapeSingleQuotes(searchTerm) + '%';
+        whereClauses.add(
+          '(Name LIKE :searchPattern OR DuplicateRule.MasterLabel LIKE :searchPattern)'
+        );
+      }
+
+      if (!whereClauses.isEmpty()) {
+        query += 'WHERE ' + String.join(whereClauses, ' AND ') + ' ';
       }
 
       query += 'ORDER BY CreatedDate DESC ';
@@ -40,8 +60,8 @@ public with sharing class DuplicateViewerController {
 
       // Get total count for pagination
       String countQuery = 'SELECT COUNT() FROM DuplicateRecordSet';
-      if (String.isNotBlank(objectType) && objectType != 'All') {
-        countQuery += ' WHERE DuplicateRule.SobjectType = :objectType';
+      if (!whereClauses.isEmpty()) {
+        countQuery += ' WHERE ' + String.join(whereClauses, ' AND ');
       }
       result.totalCount = Database.countQuery(countQuery);
 
@@ -68,6 +88,359 @@ public with sharing class DuplicateViewerController {
         'Error fetching duplicate sets: ' + e.getMessage()
       );
     }
+  }
+
+  /**
+   * @description Retrieves duplicate record sets with preview data.
+   * @param objectType Optional filter for specific object type (e.g., 'Contact', 'Account')
+   * @param searchTerm Optional search term to filter by name or rule label
+   * @param limitCount Maximum number of sets to return
+   * @param offsetCount Offset for pagination
+   * @return DuplicateDataResult with set info and preview data
+   */
+  @AuraEnabled
+  public static DuplicateDataResult getDuplicateSetPreviews(
+    String objectType,
+    String searchTerm,
+    Integer limitCount,
+    Integer offsetCount
+  ) {
+    try {
+      // First get the basic duplicate sets data
+      DuplicateDataResult result = getDuplicateSets(
+        objectType,
+        searchTerm,
+        limitCount,
+        offsetCount
+      );
+
+      if (result.duplicateSets == null || result.duplicateSets.isEmpty()) {
+        return result;
+      }
+
+      // Map to cache field describes per object type
+      Map<String, Schema.SObjectType> globalDescribeMap = Schema.getGlobalDescribe();
+      Map<String, Map<String, Schema.SObjectField>> fieldMapsByObject = new Map<String, Map<String, Schema.SObjectField>>();
+
+      // Enhance each set with preview data
+      for (DuplicateSetWrapper wrapper : result.duplicateSets) {
+        try {
+          // Get preview field configuration from the duplicate rule
+          List<String> previewFieldNames = getPreviewFieldsForRule(
+            wrapper.duplicateRuleId,
+            wrapper.objectType
+          );
+
+          if (previewFieldNames.isEmpty()) {
+            continue;
+          }
+
+          wrapper.previewFields = previewFieldNames;
+
+          // Get field labels
+          if (!fieldMapsByObject.containsKey(wrapper.objectType)) {
+            Schema.SObjectType sObjType = globalDescribeMap.get(
+              wrapper.objectType
+            );
+            if (sObjType != null) {
+              fieldMapsByObject.put(
+                wrapper.objectType,
+                sObjType.getDescribe().fields.getMap()
+              );
+            }
+          }
+
+          Map<String, Schema.SObjectField> fieldMap = fieldMapsByObject.get(
+            wrapper.objectType
+          );
+          if (fieldMap != null) {
+            wrapper.fieldLabels = new Map<String, String>();
+            for (String fieldName : previewFieldNames) {
+              Schema.SObjectField field = fieldMap.get(fieldName);
+              if (field != null) {
+                wrapper.fieldLabels.put(
+                  fieldName,
+                  field.getDescribe().getLabel()
+                );
+              }
+            }
+          }
+
+          // Get sample records for this set
+          wrapper.sampleRecords = getSampleRecordsForSet(
+            wrapper.id,
+            wrapper.objectType,
+            previewFieldNames,
+            2
+          );
+
+          // Calculate field differences across sample records
+          wrapper.fieldDifferences = calculateFieldDifferences(
+            wrapper.sampleRecords,
+            previewFieldNames
+          );
+        } catch (Exception e) {
+          // Log error but continue processing other sets
+          System.debug(
+            'Error getting preview data for set ' +
+              wrapper.id +
+              ': ' +
+              e.getMessage()
+          );
+        }
+      }
+
+      return result;
+    } catch (Exception e) {
+      throw new AuraHandledException(
+        'Error fetching duplicate set previews: ' + e.getMessage()
+      );
+    }
+  }
+
+  /**
+   * @description Gets the preview field names for a duplicate rule.
+   *              Uses smart defaults based on object type.
+   * @param ruleId The duplicate rule ID
+   * @param objectType The object type
+   * @return List of field API names
+   */
+  private static List<String> getPreviewFieldsForRule(
+    Id ruleId,
+    String objectType
+  ) {
+    // First, try to get fields from matching rules for this object
+    List<String> matchingFields = getMatchingRuleFields(objectType);
+    if (!matchingFields.isEmpty()) {
+      return matchingFields;
+    }
+
+    // Fall back to defaults if no matching rule fields found
+    return getDefaultPreviewFields(objectType);
+  }
+
+  /**
+   * @description Gets fields from MatchingRuleItems for the given object type.
+   *              These are the fields actually used to identify duplicates.
+   * @param objectType The object type
+   * @return List of field API names from matching rules
+   */
+  private static List<String> getMatchingRuleFields(String objectType) {
+    Set<String> fields = new Set<String>();
+
+    if (String.isBlank(objectType)) {
+      return new List<String>();
+    }
+
+    try {
+      // Query MatchingRuleItems for all matching rules of this object type
+      List<MatchingRuleItem> items = [
+        SELECT Field
+        FROM MatchingRuleItem
+        WHERE MatchingRule.SobjectType = :objectType
+      ];
+
+      for (MatchingRuleItem item : items) {
+        if (String.isNotBlank(item.Field)) {
+          fields.add(item.Field);
+        }
+      }
+    } catch (Exception e) {
+      // If query fails, return empty - caller will fall back to defaults
+      System.debug(
+        LoggingLevel.WARN,
+        'Error querying MatchingRuleItem: ' + e.getMessage()
+      );
+    }
+
+    return new List<String>(fields);
+  }
+
+  /**
+   * @description Gets default preview fields based on object type.
+   * @param objectType The object type
+   * @return List of default field API names
+   */
+  private static List<String> getDefaultPreviewFields(String objectType) {
+    List<String> fields = new List<String>();
+
+    if (String.isBlank(objectType)) {
+      return fields;
+    }
+
+    // Smart defaults based on object type
+    switch on objectType {
+      when 'Contact' {
+        fields.addAll(new List<String>{ 'Email', 'Phone', 'Title' });
+      }
+      when 'Account' {
+        fields.addAll(new List<String>{ 'Website', 'Industry', 'Phone' });
+      }
+      when 'Lead' {
+        fields.addAll(new List<String>{ 'Email', 'Company', 'Phone' });
+      }
+      when else {
+        // For custom objects, try to get first 2 custom fields
+        try {
+          Schema.SObjectType sObjType = Schema.getGlobalDescribe()
+            .get(objectType);
+          if (sObjType != null) {
+            Map<String, Schema.SObjectField> fieldMap = sObjType.getDescribe()
+              .fields.getMap();
+            Integer count = 0;
+            for (String fieldName : fieldMap.keySet()) {
+              if (fieldName.endsWith('__c') && count < 2) {
+                fields.add(fieldName);
+                count++;
+              }
+            }
+          }
+        } catch (Exception e) {
+          System.debug('Error getting custom fields: ' + e.getMessage());
+        }
+      }
+    }
+
+    return fields;
+  }
+
+  /**
+   * @description Gets sample records with preview field values for a duplicate set.
+   * @param setId The duplicate set ID
+   * @param objectType The object type
+   * @param fieldNames The field names to retrieve
+   * @param sampleSize Number of sample records to return
+   * @return List of RecordPreview
+   */
+  private static List<RecordPreview> getSampleRecordsForSet(
+    Id setId,
+    String objectType,
+    List<String> fieldNames,
+    Integer sampleSize
+  ) {
+    List<RecordPreview> previews = new List<RecordPreview>();
+
+    if (
+      setId == null ||
+      String.isBlank(objectType) ||
+      fieldNames == null ||
+      fieldNames.isEmpty()
+    ) {
+      return previews;
+    }
+
+    try {
+      // Get sample duplicate record items
+      List<DuplicateRecordItem> items = [
+        SELECT Id, RecordId
+        FROM DuplicateRecordItem
+        WHERE DuplicateRecordSetId = :setId
+        ORDER BY CreatedDate ASC
+        LIMIT :sampleSize
+      ];
+
+      if (items.isEmpty()) {
+        return previews;
+      }
+
+      // Build dynamic SOQL query for actual records
+      Set<Id> recordIds = new Set<Id>();
+      for (DuplicateRecordItem item : items) {
+        recordIds.add(item.RecordId);
+      }
+
+      // Validate and filter accessible fields
+      Schema.SObjectType sObjType = Schema.getGlobalDescribe().get(objectType);
+      if (sObjType == null) {
+        return previews;
+      }
+
+      Map<String, Schema.SObjectField> fieldMap = sObjType.getDescribe()
+        .fields.getMap();
+      List<String> accessibleFields = new List<String>{ 'Id', 'Name' };
+
+      for (String fieldName : fieldNames) {
+        Schema.SObjectField field = fieldMap.get(fieldName);
+        if (field != null && field.getDescribe().isAccessible()) {
+          accessibleFields.add(fieldName);
+        }
+      }
+
+      // Build and execute query
+      String query =
+        'SELECT ' +
+        String.join(accessibleFields, ', ') +
+        ' FROM ' +
+        String.escapeSingleQuotes(objectType) +
+        ' WHERE Id IN :recordIds';
+
+      List<SObject> records = Database.query(query);
+
+      // Build preview objects
+      for (SObject record : records) {
+        RecordPreview preview = new RecordPreview();
+        preview.recordId = record.Id;
+        preview.recordName = (String) record.get('Name');
+        preview.fieldValues = new Map<String, Object>();
+
+        for (String fieldName : fieldNames) {
+          if (accessibleFields.contains(fieldName)) {
+            Object value = record.get(fieldName);
+            preview.fieldValues.put(fieldName, value);
+          }
+        }
+
+        previews.add(preview);
+      }
+    } catch (Exception e) {
+      System.debug('Error getting sample records: ' + e.getMessage());
+    }
+
+    return previews;
+  }
+
+  /**
+   * @description Calculates which fields have different values across sample records.
+   * @param sampleRecords List of RecordPreview to compare
+   * @param fieldNames Fields to check for differences
+   * @return Map of field name to boolean (true if values differ)
+   */
+  private static Map<String, Boolean> calculateFieldDifferences(
+    List<RecordPreview> sampleRecords,
+    List<String> fieldNames
+  ) {
+    Map<String, Boolean> differences = new Map<String, Boolean>();
+
+    if (
+      sampleRecords == null ||
+      sampleRecords.size() < 2 ||
+      fieldNames == null
+    ) {
+      // Not enough records to compare, mark all as non-different
+      for (String fieldName : fieldNames) {
+        differences.put(fieldName, false);
+      }
+      return differences;
+    }
+
+    // Compare field values across all sample records
+    for (String fieldName : fieldNames) {
+      Set<String> uniqueValues = new Set<String>();
+
+      for (RecordPreview record : sampleRecords) {
+        if (record.fieldValues != null) {
+          Object value = record.fieldValues.get(fieldName);
+          // Convert to string for comparison (handles null)
+          String strValue = value == null ? '' : String.valueOf(value);
+          uniqueValues.add(strValue);
+        }
+      }
+
+      // Field has differences if there's more than one unique value
+      differences.put(fieldName, uniqueValues.size() > 1);
+    }
+
+    return differences;
   }
 
   /**
@@ -550,6 +923,14 @@ public with sharing class DuplicateViewerController {
     public Datetime lastModifiedDate;
     @AuraEnabled
     public Id duplicateRuleId;
+    @AuraEnabled
+    public List<RecordPreview> sampleRecords;
+    @AuraEnabled
+    public List<String> previewFields;
+    @AuraEnabled
+    public Map<String, String> fieldLabels;
+    @AuraEnabled
+    public Map<String, Boolean> fieldDifferences; // field -> true if values differ across records
   }
 
   public class DuplicateItemWrapper {
@@ -615,6 +996,17 @@ public with sharing class DuplicateViewerController {
     public Boolean isComplete;
     @AuraEnabled
     public Boolean isSuccess;
+  }
+
+  public class RecordPreview {
+    @AuraEnabled
+    public Id recordId;
+    @AuraEnabled
+    public String recordName;
+    @AuraEnabled
+    public Map<String, Object> fieldValues;
+    @AuraEnabled
+    public Map<String, List<String>> allValues; // field -> [value1, value2, ...] for diff display
   }
 
   // =====================================================================

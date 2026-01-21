@@ -286,10 +286,24 @@
       <section class="duplicates-section">
         <div class="section-header">
           <h2>Duplicate Sets ({totalCount})</h2>
+          <lightning-input
+            type="search"
+            name="search"
+            label="Search records"
+            placeholder="Search by name, email, or any field..."
+            value={searchTerm}
+            onchange={handleSearchChange}
+            variant="label-hidden"
+            class="search-input"
+          >
+          </lightning-input>
+          <template if:true={showSearchResults}>
+            <span class="search-results-message">{searchResultsMessage}</span>
+          </template>
         </div>
 
         <div class="duplicate-sets-grid">
-          <template for:each={duplicateSets} for:item="dupSet">
+          <template for:each={filteredDuplicateSets} for:item="dupSet">
             <div
               key={dupSet.id}
               class="duplicate-set-card"
@@ -314,6 +328,50 @@
                   ></lightning-icon>
                   <span>{dupSet.ruleName}</span>
                 </div>
+
+                <!-- Preview Section - Compact diff display -->
+                <template if:true={dupSet.sampleRecords}>
+                  <div class="set-preview">
+                    <!-- Record name -->
+                    <div class="preview-header">
+                      <span class="preview-name">{dupSet.firstRecordName}</span>
+                    </div>
+                    <template if:true={dupSet.hasAnyFields}>
+                      <!-- Identical fields shown once -->
+                      <template if:true={dupSet.hasIdenticalFields}>
+                        <div class="identical-fields">
+                          <template
+                            for:each={dupSet.identicalFieldDisplays}
+                            for:item="field"
+                          >
+                            <span key={field.fieldName} class="identical-item">
+                              <span class="field-label">{field.label}:</span>
+                              <span class="field-value">{field.value}</span>
+                            </span>
+                          </template>
+                        </div>
+                      </template>
+                      <!-- Differing fields with comparison -->
+                      <template if:true={dupSet.hasDifferences}>
+                        <div class="diff-summary">
+                          <template
+                            for:each={dupSet.differingFieldDisplays}
+                            for:item="diff"
+                          >
+                            <span key={diff.fieldName} class="diff-item">
+                              <span class="diff-label">{diff.label}:</span>
+                              <span class="diff-values">
+                                <span class="diff-value">{diff.value1}</span>
+                                <span class="diff-vs">vs</span>
+                                <span class="diff-value">{diff.value2}</span>
+                              </span>
+                            </span>
+                          </template>
+                        </div>
+                      </template>
+                    </template>
+                  </div>
+                </template>
               </div>
               <div class="set-card-footer">
                 <span class="set-date">
@@ -326,16 +384,6 @@
                   </lightning-formatted-date-time>
                 </span>
                 <div class="set-card-actions">
-                  <lightning-button-icon
-                    icon-name="utility:merge"
-                    variant="bare"
-                    alternative-text="Merge records"
-                    onclick={handleMergeClick}
-                    data-id={dupSet.id}
-                    class="merge-btn"
-                    title="Merge duplicates"
-                  >
-                  </lightning-button-icon>
                   <lightning-button-icon
                     icon-name="utility:delete"
                     variant="bare"
@@ -378,100 +426,6 @@
       </section>
     </template>
   </div>
-
-  <!-- Detail Modal -->
-  <template if:true={showDetailModal}>
-    <section
-      role="dialog"
-      tabindex="-1"
-      class="slds-modal slds-fade-in-open slds-modal_large"
-    >
-      <div class="slds-modal__container">
-        <button
-          class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
-          onclick={closeDetailModal}
-        >
-          <lightning-icon
-            icon-name="utility:close"
-            size="small"
-            variant="inverse"
-          ></lightning-icon>
-          <span class="slds-assistive-text">Close</span>
-        </button>
-        <div class="slds-modal__header modal-header">
-          <h2 class="slds-modal__title">
-            <lightning-icon
-              icon-name="standard:record_lookup"
-              size="small"
-              class="modal-title-icon"
-            ></lightning-icon>
-            Duplicate Set Details
-          </h2>
-        </div>
-        <div class="slds-modal__content modal-content" id="modal-content">
-          <template if:true={isLoadingItems}>
-            <div class="modal-loading">
-              <lightning-spinner
-                alternative-text="Loading"
-                size="small"
-              ></lightning-spinner>
-            </div>
-          </template>
-          <template if:false={isLoadingItems}>
-            <div class="items-list">
-              <template for:each={selectedSetItems} for:item="item">
-                <div key={item.id} class="item-row">
-                  <div class="item-icon">
-                    <lightning-icon
-                      icon-name="standard:contact"
-                      size="small"
-                    ></lightning-icon>
-                  </div>
-                  <div class="item-info">
-                    <a href={item.recordUrl} target="_blank" class="item-name">
-                      {item.recordName}
-                    </a>
-                    <span class="item-id">{item.recordId}</span>
-                  </div>
-                  <div class="item-date">
-                    <lightning-formatted-date-time
-                      value={item.createdDate}
-                      year="numeric"
-                      month="short"
-                      day="2-digit"
-                      hour="2-digit"
-                      minute="2-digit"
-                    >
-                    </lightning-formatted-date-time>
-                  </div>
-                  <div class="item-actions">
-                    <lightning-button-icon
-                      icon-name="utility:new_window"
-                      variant="bare"
-                      alternative-text="Open record"
-                      onclick={handleOpenRecord}
-                      data-url={item.recordUrl}
-                    >
-                    </lightning-button-icon>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </template>
-        </div>
-        <div class="slds-modal__footer modal-footer">
-          <lightning-button
-            label="Close"
-            onclick={closeDetailModal}
-          ></lightning-button>
-        </div>
-      </div>
-    </section>
-    <div
-      class="slds-backdrop slds-backdrop_open"
-      onclick={closeDetailModal}
-    ></div>
-  </template>
 
   <!-- Merge Modal -->
   <template if:true={showMergeModal}>

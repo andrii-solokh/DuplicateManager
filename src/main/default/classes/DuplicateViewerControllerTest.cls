@@ -56,6 +56,7 @@ private class DuplicateViewerControllerTest {
     Test.startTest();
     DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
       null,
+      null,
       10,
       0
     );
@@ -79,6 +80,7 @@ private class DuplicateViewerControllerTest {
     Test.startTest();
     DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
       'All',
+      null,
       10,
       0
     );
@@ -92,6 +94,7 @@ private class DuplicateViewerControllerTest {
     Test.startTest();
     DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
       'Contact',
+      null,
       10,
       0
     );
@@ -105,12 +108,195 @@ private class DuplicateViewerControllerTest {
     Test.startTest();
     DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
       'Contact',
+      null,
       5,
       5
     );
     Test.stopTest();
 
     System.assertNotEquals(null, result, 'Result should not be null');
+  }
+
+  // =====================================================================
+  // GET DUPLICATE SET PREVIEWS TESTS
+  // =====================================================================
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsNoFilter() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+      null,
+      null,
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+    System.assertNotEquals(
+      null,
+      result.duplicateSets,
+      'Duplicate sets list should not be null'
+    );
+    System.assertNotEquals(
+      null,
+      result.totalCount,
+      'Total count should not be null'
+    );
+  }
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsWithContactFilter() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+      'Contact',
+      null,
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+    System.assertNotEquals(
+      null,
+      result.duplicateSets,
+      'Duplicate sets list should not be null'
+    );
+  }
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsWithPreviewData() {
+    // Get an active duplicate rule
+    List<DuplicateRule> rules = [
+      SELECT Id
+      FROM DuplicateRule
+      WHERE SobjectType = 'Contact' AND IsActive = TRUE
+      LIMIT 1
+    ];
+
+    if (!rules.isEmpty()) {
+      // Create DuplicateRecordSet
+      DuplicateRecordSet drs = new DuplicateRecordSet();
+      drs.DuplicateRuleId = rules[0].Id;
+      insert drs;
+
+      // Get test contacts
+      List<Contact> contacts = [
+        SELECT Id
+        FROM Contact
+        WHERE LastName = 'TestDuplicate'
+        LIMIT 2
+      ];
+
+      if (contacts.size() >= 2) {
+        // Create DuplicateRecordItems
+        List<DuplicateRecordItem> items = new List<DuplicateRecordItem>();
+        for (Contact c : contacts) {
+          DuplicateRecordItem item = new DuplicateRecordItem();
+          item.DuplicateRecordSetId = drs.Id;
+          item.RecordId = c.Id;
+          items.add(item);
+        }
+        insert items;
+
+        Test.startTest();
+        DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+          'Contact',
+          null,
+          10,
+          0
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, result, 'Result should not be null');
+        System.assertNotEquals(
+          null,
+          result.duplicateSets,
+          'Duplicate sets list should not be null'
+        );
+
+        // Check if preview data is populated
+        if (!result.duplicateSets.isEmpty()) {
+          DuplicateViewerController.DuplicateSetWrapper firstSet = result.duplicateSets[0];
+          // Verify preview fields exist
+          System.assertNotEquals(
+            null,
+            firstSet.previewFields,
+            'Preview fields should not be null'
+          );
+          // Verify field labels exist
+          System.assertNotEquals(
+            null,
+            firstSet.fieldLabels,
+            'Field labels should not be null'
+          );
+        }
+
+        // Cleanup
+        delete items;
+        delete drs;
+      }
+    }
+  }
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsDefaultFields() {
+    // Get an active duplicate rule
+    List<DuplicateRule> rules = [
+      SELECT Id
+      FROM DuplicateRule
+      WHERE SobjectType = 'Contact' AND IsActive = TRUE
+      LIMIT 1
+    ];
+
+    if (!rules.isEmpty()) {
+      // Create DuplicateRecordSet
+      DuplicateRecordSet drs = new DuplicateRecordSet();
+      drs.DuplicateRuleId = rules[0].Id;
+      insert drs;
+
+      // Get test contact
+      List<Contact> contacts = [SELECT Id FROM Contact LIMIT 1];
+
+      if (!contacts.isEmpty()) {
+        // Create DuplicateRecordItem
+        DuplicateRecordItem item = new DuplicateRecordItem();
+        item.DuplicateRecordSetId = drs.Id;
+        item.RecordId = contacts[0].Id;
+        insert item;
+
+        Test.startTest();
+        DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+          'Contact',
+          null,
+          10,
+          0
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, result, 'Result should not be null');
+
+        // Verify default fields are used for Contact
+        if (!result.duplicateSets.isEmpty()) {
+          DuplicateViewerController.DuplicateSetWrapper firstSet = result.duplicateSets[0];
+          if (
+            firstSet.previewFields != null && !firstSet.previewFields.isEmpty()
+          ) {
+            // Contact default fields should include Email, Phone, Title
+            System.assert(
+              firstSet.previewFields.contains('Email') ||
+                firstSet.previewFields.contains('Phone') ||
+                firstSet.previewFields.contains('Title'),
+              'Default Contact fields should be present'
+            );
+          }
+        }
+
+        // Cleanup
+        delete item;
+        delete drs;
+      }
+    }
   }
 
   // =====================================================================
@@ -583,9 +769,23 @@ private class DuplicateViewerControllerTest {
     wrapper.objectType = 'Contact';
     wrapper.createdDate = Datetime.now();
     wrapper.lastModifiedDate = Datetime.now();
+    wrapper.fieldDifferences = new Map<String, Boolean>{
+      'Email' => true,
+      'Phone' => false
+    };
 
     System.assertEquals('Test Set', wrapper.name, 'Name should match');
     System.assertEquals(5, wrapper.recordCount, 'Record count should be 5');
+    System.assertEquals(
+      true,
+      wrapper.fieldDifferences.get('Email'),
+      'Email should differ'
+    );
+    System.assertEquals(
+      false,
+      wrapper.fieldDifferences.get('Phone'),
+      'Phone should not differ'
+    );
   }
 
   @IsTest
@@ -654,6 +854,102 @@ private class DuplicateViewerControllerTest {
   }
 
   @IsTest
+  static void testRecordPreviewWrapper() {
+    DuplicateViewerController.RecordPreview preview = new DuplicateViewerController.RecordPreview();
+    preview.recordId = '003000000000001';
+    preview.recordName = 'Test Contact';
+    preview.fieldValues = new Map<String, Object>{
+      'Email' => 'test@example.com',
+      'Phone' => '123-456-7890'
+    };
+    preview.allValues = new Map<String, List<String>>{
+      'Email' => new List<String>{ 'test@example.com', 'test2@example.com' },
+      'Phone' => new List<String>{ '123-456-7890', '123-456-7890' }
+    };
+
+    System.assertEquals(
+      'Test Contact',
+      preview.recordName,
+      'Name should match'
+    );
+    System.assertEquals(
+      'test@example.com',
+      preview.fieldValues.get('Email'),
+      'Email should match'
+    );
+    System.assertEquals(
+      2,
+      preview.allValues.get('Email').size(),
+      'Email allValues should have 2 entries'
+    );
+  }
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsWithFieldDifferences() {
+    // Get an active duplicate rule
+    List<DuplicateRule> rules = [
+      SELECT Id
+      FROM DuplicateRule
+      WHERE SobjectType = 'Contact' AND IsActive = TRUE
+      LIMIT 1
+    ];
+
+    if (!rules.isEmpty()) {
+      // Create DuplicateRecordSet
+      DuplicateRecordSet drs = new DuplicateRecordSet();
+      drs.DuplicateRuleId = rules[0].Id;
+      insert drs;
+
+      // Get test contacts with different emails
+      List<Contact> contacts = [
+        SELECT Id, Email
+        FROM Contact
+        WHERE LastName = 'TestDuplicate'
+        LIMIT 2
+      ];
+
+      if (contacts.size() >= 2) {
+        // Create DuplicateRecordItems
+        List<DuplicateRecordItem> items = new List<DuplicateRecordItem>();
+        for (Contact c : contacts) {
+          DuplicateRecordItem item = new DuplicateRecordItem();
+          item.DuplicateRecordSetId = drs.Id;
+          item.RecordId = c.Id;
+          items.add(item);
+        }
+        insert items;
+
+        Test.startTest();
+        DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+          'Contact',
+          null,
+          10,
+          0
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, result, 'Result should not be null');
+
+        // Check if field differences are populated
+        if (!result.duplicateSets.isEmpty()) {
+          DuplicateViewerController.DuplicateSetWrapper firstSet = result.duplicateSets[0];
+          // fieldDifferences should be populated for sets with preview data
+          if (firstSet.fieldDifferences != null) {
+            System.assert(
+              firstSet.fieldDifferences.size() > 0,
+              'Field differences should be populated'
+            );
+          }
+        }
+
+        // Cleanup
+        delete items;
+        delete drs;
+      }
+    }
+  }
+
+  @IsTest
   static void testScheduleInfoWrapper() {
     DuplicateViewerController.ScheduleInfo info = new DuplicateViewerController.ScheduleInfo();
     info.jobId = '08e000000000001';
@@ -706,6 +1002,7 @@ private class DuplicateViewerControllerTest {
         Test.startTest();
         DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
           'Contact',
+          null,
           10,
           0
         );
@@ -882,5 +1179,103 @@ private class DuplicateViewerControllerTest {
 
     // Cleanup
     DuplicateViewerController.unscheduleJob('Account');
+  }
+
+  // =====================================================================
+  // SEARCH FUNCTIONALITY TESTS
+  // =====================================================================
+
+  @IsTest
+  static void testGetDuplicateSetsWithSearchTerm() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
+      null,
+      'test',
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+    System.assertNotEquals(
+      null,
+      result.duplicateSets,
+      'Duplicate sets list should not be null'
+    );
+  }
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsWithSearch() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+      'Contact',
+      'test',
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+  }
+
+  @IsTest
+  static void testSearchWithSpecialCharacters() {
+    Test.startTest();
+    // Test SQL injection prevention
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
+      null,
+      'test\'--',
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(
+      null,
+      result,
+      'Should handle special characters safely'
+    );
+  }
+
+  @IsTest
+  static void testSearchWithObjectTypeAndSearchTerm() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
+      'Contact',
+      'duplicate',
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+  }
+
+  @IsTest
+  static void testSearchWithEmptySearchTerm() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSets(
+      'Contact',
+      '',
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+  }
+
+  @IsTest
+  static void testSearchPreviewsWithObjectTypeAndSearch() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+      'Account',
+      'search term',
+      10,
+      0
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
   }
 }
