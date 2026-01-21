@@ -141,11 +141,15 @@ export default class DuplicateViewer extends LightningElement {
 
               if (set.fieldDifferences[fieldName] === true && secondRecord) {
                 // Field has different values - show comparison
+                const formattedValue1 = this.formatFieldValue(value1);
+                const formattedValue2 = this.formatFieldValue(value2);
                 differingFieldDisplays.push({
                   fieldName: fieldName,
                   label: label,
-                  value1: this.formatFieldValue(value1),
-                  value2: this.formatFieldValue(value2)
+                  value1: formattedValue1,
+                  value2: formattedValue2,
+                  value1Empty: !formattedValue1,
+                  value2Empty: !formattedValue2
                 });
               } else {
                 // Field has identical values - show once
@@ -389,6 +393,16 @@ export default class DuplicateViewer extends LightningElement {
     this.currentPage = 1;
     this.isLoading = true;
     this.loadAllData();
+  }
+
+  handleSummaryCardClick(event) {
+    const objectType = event.currentTarget.dataset.object;
+    if (objectType) {
+      this.selectedObjectType = objectType;
+      this.currentPage = 1;
+      this.isLoading = true;
+      this.loadAllData();
+    }
   }
 
   handleSearchChange(event) {

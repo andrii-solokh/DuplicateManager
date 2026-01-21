@@ -83,7 +83,12 @@
           </div>
         </div>
         <template for:each={summary.setsByObject} for:item="objCount">
-          <div key={objCount.objectType} class="summary-card object-count">
+          <div
+            key={objCount.objectType}
+            class="summary-card object-count clickable"
+            onclick={handleSummaryCardClick}
+            data-object={objCount.objectType}
+          >
             <div class="card-icon">
               <lightning-icon
                 icon-name="utility:sobject"
@@ -92,7 +97,9 @@
             </div>
             <div class="card-content">
               <span class="card-value">{objCount.count}</span>
-              <span class="card-label">{objCount.objectType}</span>
+              <span class="card-label"
+                >{objCount.objectType} Duplicate Sets</span
+              >
             </div>
           </div>
         </template>
@@ -361,9 +368,19 @@
                             <span key={diff.fieldName} class="diff-item">
                               <span class="diff-label">{diff.label}:</span>
                               <span class="diff-values">
-                                <span class="diff-value">{diff.value1}</span>
+                                <template if:false={diff.value1Empty}>
+                                  <span class="diff-value">{diff.value1}</span>
+                                </template>
+                                <template if:true={diff.value1Empty}>
+                                  <code class="diff-empty">empty</code>
+                                </template>
                                 <span class="diff-vs">vs</span>
-                                <span class="diff-value">{diff.value2}</span>
+                                <template if:false={diff.value2Empty}>
+                                  <span class="diff-value">{diff.value2}</span>
+                                </template>
+                                <template if:true={diff.value2Empty}>
+                                  <code class="diff-empty">empty</code>
+                                </template>
                               </span>
                             </span>
                           </template>

@@ -230,6 +230,14 @@
   transform: translateY(-2px);
 }
 
+.summary-card.clickable {
+  cursor: pointer;
+}
+
+.summary-card.clickable:hover {
+  border-color: var(--color-border-hover);
+}
+
 .card-icon {
   width: 48px;
   height: 48px;
@@ -408,6 +416,8 @@
   cursor: pointer;
   transition: var(--transition);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .duplicate-set-card:hover {
@@ -468,6 +478,7 @@
 
 .set-card-body {
   padding: 12px 16px;
+  flex: 1;
 }
 
 .set-name {
@@ -494,6 +505,8 @@
   padding: 10px 16px;
   border-top: 1px solid var(--color-border);
   background: #fafbfc;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .set-date {
@@ -591,9 +604,8 @@
 
 .diff-values {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .diff-value {
@@ -605,6 +617,16 @@
   color: #706e6b;
   font-size: 10px;
   font-style: italic;
+  text-align: center;
+}
+
+.diff-empty {
+  font-family: monospace;
+  font-size: 11px;
+  color: #706e6b;
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 3px;
 }
 
 .field-label {
