@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/andrii-solokh/DuplicateManager/compare/DuplicateManager-v1.2.2...DuplicateManager-v1.3.0) (2026-01-21)
+
+
+### Features
+
+* **ui:** improve duplicate viewer and merge modal UX ([478a2ee](https://github.com/andrii-solokh/DuplicateManager/commit/478a2ee9de6f3736febf3d7ef90e36541de4b6bd))
+
+
+### Bug Fixes
+
+* **deps:** update @lwc/eslint-plugin-lwc to v2.0.0 ([9115b70](https://github.com/andrii-solokh/DuplicateManager/commit/9115b70cdff0b697dd63448f45e09d169149c8a0))
+
 ## [1.2.2](https://github.com/andrii-solokh/DuplicateManager/compare/DuplicateManager-v1.2.1...DuplicateManager-v1.2.2) (2026-01-18)
 
 

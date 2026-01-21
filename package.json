@@ -1,6 +1,6 @@
 {
   "name": "duplicate-manager",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "Salesforce Duplicate Management UI - Modern interface for viewing, managing, and merging duplicate records",
   "license": "MIT",
   "repository": {
