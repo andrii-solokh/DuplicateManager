@@ -13,6 +13,7 @@
     "permset:assign": "sf org assign permset --name Duplicate_Manager",
     "data:load": "sf apex run --file scripts/apex/CreateTestDuplicates.apex",
     "org:open": "sf org open",
+    "dev": "sf lightning dev component -n duplicateViewer",
     "test:apex": "sf apex run test --test-level RunLocalTests --code-coverage --result-format human --wait 20",
     "test:unit": "sfdx-lwc-jest -- --passWithNoTests",
     "test:unit:watch": "sfdx-lwc-jest --watch",
