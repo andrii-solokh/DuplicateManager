@@ -396,9 +396,17 @@
 }
 
 .section-header .search-input {
-  flex: 1;
-  min-width: 200px;
-  max-width: 350px;
+  flex: 0 0 auto;
+  width: 250px;
+}
+
+.section-header .stat-item {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.section-header .stat-item strong {
+  color: var(--color-text-primary);
 }
 
 /* Duplicate Sets Grid */

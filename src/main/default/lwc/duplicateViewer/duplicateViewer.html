@@ -58,7 +58,11 @@
     <!-- Summary Cards -->
     <section class="summary-section">
       <div class="summary-cards">
-        <div class="summary-card total-sets">
+        <div
+          class="summary-card total-sets clickable"
+          onclick={handleSummaryCardClick}
+          data-object="All"
+        >
           <div class="card-icon">
             <lightning-icon
               icon-name="utility:collection_variable"
@@ -70,7 +74,11 @@
             <span class="card-label">Duplicate Sets</span>
           </div>
         </div>
-        <div class="summary-card total-items">
+        <div
+          class="summary-card total-items clickable"
+          onclick={handleSummaryCardClick}
+          data-object="All"
+        >
           <div class="card-icon">
             <lightning-icon
               icon-name="utility:record"
@@ -97,9 +105,7 @@
             </div>
             <div class="card-content">
               <span class="card-value">{objCount.count}</span>
-              <span class="card-label"
-                >{objCount.objectType} Duplicate Sets</span
-              >
+              <span class="card-label">{objCount.objectType} Sets</span>
             </div>
           </div>
         </template>
@@ -292,7 +298,6 @@
     <template if:true={showDuplicateSets}>
       <section class="duplicates-section">
         <div class="section-header">
-          <h2>Duplicate Sets ({totalCount})</h2>
           <lightning-input
             type="search"
             name="search"
@@ -304,6 +309,10 @@
             class="search-input"
           >
           </lightning-input>
+          <span class="stat-item total"
+            >Showing <strong>{displayedCount}</strong> of
+            <strong>{totalCount}</strong> sets</span
+          >
           <template if:true={showSearchResults}>
             <span class="search-results-message">{searchResultsMessage}</span>
           </template>

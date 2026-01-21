@@ -384,6 +384,10 @@ export default class DuplicateViewer extends LightningElement {
     return this.searchTerm && this.searchTerm.length > 0;
   }
 
+  get displayedCount() {
+    return this.duplicateSets.length;
+  }
+
   // =========================================================================
   // EVENT HANDLERS
   // =========================================================================
