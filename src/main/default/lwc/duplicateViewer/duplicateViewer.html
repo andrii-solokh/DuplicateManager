@@ -99,7 +99,7 @@
           >
             <div class="card-icon">
               <lightning-icon
-                icon-name="utility:sobject"
+                icon-name={objCount.iconName}
                 size="small"
               ></lightning-icon>
             </div>
@@ -295,8 +295,8 @@
     </template>
 
     <!-- Duplicate Sets List -->
-    <template if:true={showDuplicateSets}>
-      <section class="duplicates-section">
+    <template if:true={showDuplicatesSection}>
+      <section class="duplicates-section slds-is-relative">
         <div class="section-header">
           <lightning-input
             type="search"
@@ -310,121 +310,154 @@
           >
           </lightning-input>
           <span class="stat-item total"
-            >Showing <strong>{displayedCount}</strong> of
-            <strong>{totalCount}</strong> sets</span
+            >Showing&nbsp;<strong>{displayedCount}</strong>&nbsp;of&nbsp;<strong>{totalCount}</strong>&nbsp;sets</span
           >
           <template if:true={showSearchResults}>
             <span class="search-results-message">{searchResultsMessage}</span>
           </template>
         </div>
 
-        <div class="duplicate-sets-grid">
-          <template for:each={filteredDuplicateSets} for:item="dupSet">
-            <div
-              key={dupSet.id}
-              class="duplicate-set-card"
-              onclick={handleSetClick}
-              data-id={dupSet.id}
-            >
-              <div class="set-card-header">
-                <div class="set-badge" data-object={dupSet.objectType}>
-                  {dupSet.objectType}
-                </div>
-                <div class="set-count">
-                  <span class="count-number">{dupSet.recordCount}</span>
-                  <span class="count-label">records</span>
-                </div>
-              </div>
-              <div class="set-card-body">
-                <div class="set-name">{dupSet.name}</div>
-                <div class="set-rule">
-                  <lightning-icon
-                    icon-name="utility:rules"
-                    size="xx-small"
-                  ></lightning-icon>
-                  <span>{dupSet.ruleName}</span>
-                </div>
+        <!-- Grid Loading Overlay -->
+        <template if:true={showGridLoading}>
+          <div class="grid-loading-overlay">
+            <lightning-spinner
+              alternative-text="Loading"
+              size="medium"
+            ></lightning-spinner>
+          </div>
+        </template>
 
-                <!-- Preview Section - Compact diff display -->
-                <template if:true={dupSet.sampleRecords}>
-                  <div class="set-preview">
-                    <!-- Record name -->
-                    <div class="preview-header">
-                      <span class="preview-name">{dupSet.firstRecordName}</span>
-                    </div>
-                    <template if:true={dupSet.hasAnyFields}>
-                      <!-- Identical fields shown once -->
-                      <template if:true={dupSet.hasIdenticalFields}>
-                        <div class="identical-fields">
-                          <template
-                            for:each={dupSet.identicalFieldDisplays}
-                            for:item="field"
-                          >
-                            <span key={field.fieldName} class="identical-item">
-                              <span class="field-label">{field.label}:</span>
-                              <span class="field-value">{field.value}</span>
-                            </span>
-                          </template>
-                        </div>
-                      </template>
-                      <!-- Differing fields with comparison -->
-                      <template if:true={dupSet.hasDifferences}>
-                        <div class="diff-summary">
-                          <template
-                            for:each={dupSet.differingFieldDisplays}
-                            for:item="diff"
-                          >
-                            <span key={diff.fieldName} class="diff-item">
-                              <span class="diff-label">{diff.label}:</span>
-                              <span class="diff-values">
-                                <template if:false={diff.value1Empty}>
-                                  <span class="diff-value">{diff.value1}</span>
-                                </template>
-                                <template if:true={diff.value1Empty}>
-                                  <code class="diff-empty">empty</code>
-                                </template>
-                                <span class="diff-vs">vs</span>
-                                <template if:false={diff.value2Empty}>
-                                  <span class="diff-value">{diff.value2}</span>
-                                </template>
-                                <template if:true={diff.value2Empty}>
-                                  <code class="diff-empty">empty</code>
-                                </template>
-                              </span>
-                            </span>
-                          </template>
-                        </div>
-                      </template>
-                    </template>
+        <!-- No Search Results -->
+        <template if:true={showNoSearchResults}>
+          <div class="no-search-results">
+            <lightning-icon
+              icon-name="utility:search"
+              size="large"
+            ></lightning-icon>
+            <h3>No results found</h3>
+            <p>No duplicate sets match your search "{searchTerm}"</p>
+          </div>
+        </template>
+
+        <!-- Grid Content -->
+        <template if:true={showGridContent}>
+          <div class="duplicate-sets-grid">
+            <template for:each={filteredDuplicateSets} for:item="dupSet">
+              <div
+                key={dupSet.id}
+                class="duplicate-set-card"
+                onclick={handleSetClick}
+                data-id={dupSet.id}
+              >
+                <div class="set-card-header">
+                  <div class="set-badge" style={dupSet.badgeStyle}>
+                    {dupSet.objectType}
                   </div>
-                </template>
-              </div>
-              <div class="set-card-footer">
-                <span class="set-date">
-                  <lightning-formatted-date-time
-                    value={dupSet.createdDate}
-                    year="numeric"
-                    month="short"
-                    day="2-digit"
-                  >
-                  </lightning-formatted-date-time>
-                </span>
-                <div class="set-card-actions">
-                  <lightning-button-icon
-                    icon-name="utility:delete"
-                    variant="bare"
-                    alternative-text="Delete set"
-                    onclick={handleDeleteSet}
-                    data-id={dupSet.id}
-                    class="delete-btn"
-                    title="Delete set"
-                  >
-                  </lightning-button-icon>
+                  <div class="set-count">
+                    <span class="count-number">{dupSet.recordCount}</span>
+                    <span class="count-label">records</span>
+                  </div>
+                </div>
+                <div class="set-card-body">
+                  <div class="set-name">{dupSet.name}</div>
+                  <div class="set-rule">
+                    <lightning-icon
+                      icon-name="utility:rules"
+                      size="xx-small"
+                    ></lightning-icon>
+                    <span>{dupSet.ruleName}</span>
+                  </div>
+
+                  <!-- Preview Section - Compact diff display -->
+                  <template if:true={dupSet.sampleRecords}>
+                    <div class="set-preview">
+                      <!-- Record name -->
+                      <div class="preview-header">
+                        <span class="preview-name"
+                          >{dupSet.firstRecordName}</span
+                        >
+                      </div>
+                      <template if:true={dupSet.hasAnyFields}>
+                        <!-- Identical fields shown once -->
+                        <template if:true={dupSet.hasIdenticalFields}>
+                          <div class="identical-fields">
+                            <template
+                              for:each={dupSet.identicalFieldDisplays}
+                              for:item="field"
+                            >
+                              <span
+                                key={field.fieldName}
+                                class="identical-item"
+                              >
+                                <span class="field-label">{field.label}:</span>
+                                <span class="field-value">{field.value}</span>
+                              </span>
+                            </template>
+                          </div>
+                        </template>
+                        <!-- Differing fields with comparison -->
+                        <template if:true={dupSet.hasDifferences}>
+                          <div class="diff-summary">
+                            <template
+                              for:each={dupSet.differingFieldDisplays}
+                              for:item="diff"
+                            >
+                              <span key={diff.fieldName} class="diff-item">
+                                <span class="diff-label">{diff.label}:</span>
+                                <span class="diff-values">
+                                  <template if:false={diff.value1Empty}>
+                                    <span class="diff-value"
+                                      >{diff.value1}</span
+                                    >
+                                  </template>
+                                  <template if:true={diff.value1Empty}>
+                                    <code class="diff-empty">empty</code>
+                                  </template>
+                                  <span class="diff-vs">vs</span>
+                                  <template if:false={diff.value2Empty}>
+                                    <span class="diff-value"
+                                      >{diff.value2}</span
+                                    >
+                                  </template>
+                                  <template if:true={diff.value2Empty}>
+                                    <code class="diff-empty">empty</code>
+                                  </template>
+                                </span>
+                              </span>
+                            </template>
+                          </div>
+                        </template>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+                <div class="set-card-footer">
+                  <span class="set-date">
+                    <lightning-formatted-date-time
+                      value={dupSet.createdDate}
+                      year="numeric"
+                      month="short"
+                      day="2-digit"
+                    >
+                    </lightning-formatted-date-time>
+                  </span>
+                  <div class="set-card-actions">
+                    <lightning-button-icon
+                      icon-name="utility:delete"
+                      variant="bare"
+                      alternative-text="Delete set"
+                      onclick={handleDeleteSet}
+                      data-id={dupSet.id}
+                      class="delete-btn"
+                      title="Delete set"
+                    >
+                    </lightning-button-icon>
+                  </div>
                 </div>
               </div>
-            </div>
-          </template>
-        </div>
+            </template>
+          </div>
+        </template>
 
         <!-- Pagination -->
         <template if:true={showPagination}>

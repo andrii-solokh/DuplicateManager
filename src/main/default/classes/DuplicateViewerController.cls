@@ -25,6 +25,17 @@ public with sharing class DuplicateViewerController {
     try {
       DuplicateDataResult result = new DuplicateDataResult();
 
+      // If searching, find matching record IDs first
+      Set<Id> matchingSetIds = null;
+      if (String.isNotBlank(searchTerm)) {
+        matchingSetIds = findSetsWithMatchingRecords(searchTerm, objectType);
+        if (matchingSetIds.isEmpty()) {
+          result.totalCount = 0;
+          result.duplicateSets = new List<DuplicateSetWrapper>();
+          return result;
+        }
+      }
+
       // Build query for duplicate sets
       String query =
         'SELECT Id, Name, RecordCount, DuplicateRuleId, DuplicateRule.MasterLabel, ' +
@@ -40,13 +51,9 @@ public with sharing class DuplicateViewerController {
         whereClauses.add('DuplicateRule.SobjectType = :objectType');
       }
 
-      // Add search filter
-      String searchPattern = null;
-      if (String.isNotBlank(searchTerm)) {
-        searchPattern = '%' + String.escapeSingleQuotes(searchTerm) + '%';
-        whereClauses.add(
-          '(Name LIKE :searchPattern OR DuplicateRule.MasterLabel LIKE :searchPattern)'
-        );
+      // Filter by matching set IDs if searching
+      if (matchingSetIds != null) {
+        whereClauses.add('Id IN :matchingSetIds');
       }
 
       if (!whereClauses.isEmpty()) {
@@ -302,6 +309,65 @@ public with sharing class DuplicateViewerController {
     }
 
     return fields;
+  }
+
+  /**
+   * @description Finds duplicate sets containing records that match the search term.
+   * @param searchTerm The search term to match against record names
+   * @param objectType Optional object type filter
+   * @return Set of DuplicateRecordSet IDs that contain matching records
+   */
+  private static Set<Id> findSetsWithMatchingRecords(
+    String searchTerm,
+    String objectType
+  ) {
+    Set<Id> matchingSetIds = new Set<Id>();
+    String searchPattern = '%' + String.escapeSingleQuotes(searchTerm) + '%';
+
+    // Determine which object types to search
+    List<String> objectsToSearch = new List<String>();
+    if (String.isNotBlank(objectType) && objectType != 'All') {
+      objectsToSearch.add(objectType);
+    } else {
+      // Search common objects
+      objectsToSearch.addAll(
+        new List<String>{ 'Account', 'Contact', 'Lead', 'Case' }
+      );
+    }
+
+    // Find record IDs matching search term for each object type
+    Set<Id> matchingRecordIds = new Set<Id>();
+    for (String objType : objectsToSearch) {
+      try {
+        String recordQuery =
+          'SELECT Id FROM ' +
+          objType +
+          ' WHERE Name LIKE :searchPattern LIMIT 1000';
+        for (SObject record : Database.query(recordQuery)) {
+          matchingRecordIds.add(record.Id);
+        }
+      } catch (Exception e) {
+        // Object might not have Name field or not be queryable
+        System.debug('Error searching ' + objType + ': ' + e.getMessage());
+      }
+    }
+
+    if (matchingRecordIds.isEmpty()) {
+      return matchingSetIds;
+    }
+
+    // Find DuplicateRecordItems that reference the matching records
+    List<DuplicateRecordItem> items = [
+      SELECT DuplicateRecordSetId
+      FROM DuplicateRecordItem
+      WHERE RecordId IN :matchingRecordIds
+    ];
+
+    for (DuplicateRecordItem item : items) {
+      matchingSetIds.add(item.DuplicateRecordSetId);
+    }
+
+    return matchingSetIds;
   }
 
   /**

@@ -135,8 +135,7 @@
                   >
                   </lightning-input>
                   <span class="stat-item total"
-                    >Showing <strong>{visibleFieldCount}</strong> of
-                    <strong>{totalFieldCount}</strong> fields</span
+                    >Showing&nbsp;<strong>{visibleFieldCount}</strong>&nbsp;of&nbsp;<strong>{totalFieldCount}</strong>&nbsp;fields</span
                   >
                   <div class="filter-stats">
                     <span class="stat-item differences">
@@ -247,12 +246,13 @@
       <template if:false={mergeSuccess}>
         <div class="slds-modal__footer merge-modal-footer">
           <div class="footer-info">
-            <template if:true={masterRecordId}>
-              <span class="merge-summary">
-                Merge into: <strong>{masterRecordName}</strong>
-                ({selectedFieldCount} field selections)
-              </span>
-            </template>
+            <lightning-button
+              label="Delete Set"
+              variant="destructive-text"
+              icon-name="utility:delete"
+              onclick={handleDelete}
+            >
+            </lightning-button>
           </div>
           <div class="footer-actions">
             <lightning-button label="Cancel" onclick={handleClose}>

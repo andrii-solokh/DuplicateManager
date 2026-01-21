@@ -3,6 +3,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { NavigationMixin } from "lightning/navigation";
 import getRecordComparison from "@salesforce/apex/DuplicateMergeController.getRecordComparison";
 import mergeRecords from "@salesforce/apex/DuplicateMergeController.mergeRecords";
+import deleteDuplicateSet from "@salesforce/apex/DuplicateViewerController.deleteDuplicateSet";
 
 export default class DuplicateMergeModal extends NavigationMixin(
   LightningElement
@@ -303,6 +304,34 @@ export default class DuplicateMergeModal extends NavigationMixin(
 
   handleClose() {
     this.dispatchEvent(new CustomEvent("close"));
+  }
+
+  async handleDelete() {
+    // eslint-disable-next-line no-alert, no-restricted-globals
+    if (!confirm("Are you sure you want to delete this duplicate set?")) {
+      return;
+    }
+
+    try {
+      await deleteDuplicateSet({ setId: this.duplicateSetId });
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "Success",
+          message: "Duplicate set deleted successfully.",
+          variant: "success"
+        })
+      );
+      this.dispatchEvent(new CustomEvent("mergecomplete"));
+      this.dispatchEvent(new CustomEvent("close"));
+    } catch (err) {
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "Error",
+          message: err.body?.message || err.message || "Failed to delete set",
+          variant: "error"
+        })
+      );
+    }
   }
 
   handleNavigateToRecord() {

@@ -23,8 +23,7 @@
 .merge-modal-container {
   max-width: 1200px;
   width: 95vw;
-  max-height: 90vh;
-  height: 90vh;
+  max-height: 95vh;
 }
 
 /* Override SLDS modal constraints */

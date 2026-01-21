@@ -152,12 +152,15 @@ export default class DuplicateViewer extends LightningElement {
                   value2Empty: !formattedValue2
                 });
               } else {
-                // Field has identical values - show once
-                identicalFieldDisplays.push({
-                  fieldName: fieldName,
-                  label: label,
-                  value: this.formatFieldValue(value1)
-                });
+                // Field has identical values - show once (skip if empty)
+                const formattedValue = this.formatFieldValue(value1);
+                if (formattedValue) {
+                  identicalFieldDisplays.push({
+                    fieldName: fieldName,
+                    label: label,
+                    value: formattedValue
+                  });
+                }
               }
             }
           }
@@ -173,11 +176,15 @@ export default class DuplicateViewer extends LightningElement {
             ) {
               const value = firstRecord.fieldValues[fieldName];
               const label = fallbackLabels[fieldName] || fieldName;
-              identicalFieldDisplays.push({
-                fieldName: fieldName,
-                label: label,
-                value: this.formatFieldValue(value)
-              });
+              const formattedValue = this.formatFieldValue(value);
+              // Skip empty values
+              if (formattedValue) {
+                identicalFieldDisplays.push({
+                  fieldName: fieldName,
+                  label: label,
+                  value: formattedValue
+                });
+              }
             }
           }
         }
@@ -225,6 +232,9 @@ export default class DuplicateViewer extends LightningElement {
         });
       }
 
+      // Add badge style with SLDS color
+      processedSet.badgeStyle = `background-color: ${this.getObjectColor(set.objectType)}`;
+
       return processedSet;
     });
 
@@ -234,11 +244,51 @@ export default class DuplicateViewer extends LightningElement {
 
   async loadSummary() {
     const summaryData = await getDuplicateSummary();
+    // Add icon names to setsByObject
+    const setsByObject = (summaryData.setsByObject || []).map((obj) => ({
+      ...obj,
+      iconName: this.getObjectIconName(obj.objectType)
+    }));
     this.summary = {
       totalSets: summaryData.totalSets || 0,
       totalItems: summaryData.totalItems || 0,
-      setsByObject: summaryData.setsByObject || []
+      setsByObject: setsByObject
     };
+  }
+
+  // SLDS standard object icon colors
+  static OBJECT_COLORS = {
+    account: "#7F8DE1",
+    contact: "#A094ED",
+    lead: "#F88962",
+    case: "#F2CF5B",
+    opportunity: "#FCB95B",
+    campaign: "#7DC37D",
+    task: "#4BC076",
+    event: "#EB7092",
+    user: "#65CAE4",
+    record: "#9050E9"
+  };
+
+  getObjectIconName(objectType) {
+    // Standard Salesforce object icons use lowercase names
+    const standardObjects = Object.keys(DuplicateViewer.OBJECT_COLORS).filter(
+      (k) => k !== "record"
+    );
+    const lowerType = (objectType || "").toLowerCase();
+    if (standardObjects.includes(lowerType)) {
+      return `standard:${lowerType}`;
+    }
+    // For custom objects, use custom icon
+    return "standard:record";
+  }
+
+  getObjectColor(objectType) {
+    const lowerType = (objectType || "").toLowerCase();
+    return (
+      DuplicateViewer.OBJECT_COLORS[lowerType] ||
+      DuplicateViewer.OBJECT_COLORS.record
+    );
   }
 
   async loadRecentJobs() {
@@ -304,11 +354,30 @@ export default class DuplicateViewer extends LightningElement {
   // =========================================================================
 
   get showEmptyState() {
-    return !this.isLoading && !this.error && this.duplicateSets.length === 0;
+    return (
+      !this.isLoading &&
+      !this.error &&
+      this.duplicateSets.length === 0 &&
+      !this.searchTerm
+    );
   }
 
-  get showDuplicateSets() {
-    return !this.isLoading && !this.error && this.duplicateSets.length > 0;
+  get showDuplicatesSection() {
+    return !this.error && !this.showEmptyState;
+  }
+
+  get showGridContent() {
+    return !this.isLoading && this.duplicateSets.length > 0;
+  }
+
+  get showGridLoading() {
+    return this.isLoading;
+  }
+
+  get showNoSearchResults() {
+    return (
+      !this.isLoading && this.searchTerm && this.duplicateSets.length === 0
+    );
   }
 
   get totalPages() {
