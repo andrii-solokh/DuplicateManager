@@ -3,6 +3,9 @@
     role="dialog"
     tabindex="-1"
     class="slds-modal slds-fade-in-open slds-modal_large"
+    aria-modal="true"
+    aria-label="Merge Duplicate Records"
+    onkeydown={handleKeyDown}
   >
     <div class="slds-modal__container merge-modal-container">
       <!-- Close Button -->
@@ -34,10 +37,10 @@
       <div class="slds-modal__content merge-modal-content" id="modal-content">
         <!-- Loading State -->
         <template if:true={isLoading}>
-          <div class="loading-container">
+          <div class="loading-container slds-is-relative">
             <lightning-spinner
               alternative-text="Loading"
-              size="medium"
+              size="small"
             ></lightning-spinner>
             <p class="loading-text">Loading record comparison...</p>
           </div>

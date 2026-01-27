@@ -1,0 +1,222 @@
+<template>
+  <section
+    role="dialog"
+    tabindex="-1"
+    class="slds-modal slds-fade-in-open slds-modal_large"
+    aria-modal="true"
+    aria-label="Field Configuration Settings"
+    onkeydown={handleKeyDown}
+  >
+    <div class="slds-modal__container">
+      <!-- Header -->
+      <div class="slds-modal__header settings-modal-header">
+        <button
+          class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+          onclick={handleClose}
+        >
+          <lightning-icon
+            icon-name="utility:close"
+            size="small"
+            variant="inverse"
+          ></lightning-icon>
+          <span class="slds-assistive-text">Close</span>
+        </button>
+        <div class="slds-modal__title">
+          <lightning-icon
+            icon-name="utility:settings"
+            size="medium"
+            class="settings-title-icon"
+          ></lightning-icon>
+          <h2>Field Configuration</h2>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="slds-modal__content settings-content">
+        <div class="settings-body">
+          <!-- Left Sidebar -->
+          <div class="settings-sidebar">
+            <div class="sidebar-search">
+              <lightning-input
+                type="search"
+                label="Quick Find"
+                variant="label-hidden"
+                placeholder="Quick Find..."
+                value={objectSearchTerm}
+                onchange={handleObjectSearchChange}
+              ></lightning-input>
+            </div>
+            <div class="sidebar-list">
+              <template for:each={filteredObjectTypes} for:item="objType">
+                <div
+                  key={objType.value}
+                  class={objType.itemClass}
+                  data-value={objType.value}
+                  onclick={handleObjectTypeChange}
+                >
+                  {objType.label}
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Right Main Area -->
+          <div class="settings-main">
+            <!-- Loading -->
+            <template if:true={isLoading}>
+              <div class="settings-loading slds-is-relative">
+                <lightning-spinner
+                  alternative-text="Loading fields"
+                  size="small"
+                ></lightning-spinner>
+              </div>
+            </template>
+
+            <!-- Field Configuration Table -->
+            <template if:true={hasObjectSelected}>
+              <template if:false={isLoading}>
+                <template if:true={hasFields}>
+                  <div class="settings-info slds-m-bottom_small">
+                    <span class="settings-count"
+                      >{configuredCount} field(s) configured</span
+                    >
+                  </div>
+                  <div class="field-search-container slds-m-bottom_small">
+                    <lightning-input
+                      type="search"
+                      label="Search fields"
+                      placeholder="Search by field name or API name..."
+                      value={fieldSearchTerm}
+                      onchange={handleFieldSearchChange}
+                      variant="label-hidden"
+                      class="field-search-input"
+                    ></lightning-input>
+                    <template if:true={isSearchActive}>
+                      <span class="field-search-count"
+                        >{searchCountMessage}</span
+                      >
+                    </template>
+                  </div>
+                  <div class="field-table-container">
+                    <table
+                      class="slds-table slds-table_cell-buffer slds-table_bordered field-table"
+                    >
+                      <thead>
+                        <tr>
+                          <th scope="col" class="field-drag-col"></th>
+                          <th scope="col" class="field-label-col">Field</th>
+                          <th scope="col" class="field-api-col">API Name</th>
+                          <th scope="col" class="field-check-col">Preview</th>
+                          <th scope="col" class="field-check-col">Filter</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template
+                          for:each={filteredAvailableFields}
+                          for:item="field"
+                        >
+                          <tr
+                            key={field.apiName}
+                            class={field.rowClass}
+                            draggable={field.draggableAttr}
+                            data-field={field.apiName}
+                            ondragstart={handleDragStart}
+                            ondragover={handleDragOver}
+                            ondragenter={handleDragEnter}
+                            ondragleave={handleDragLeave}
+                            ondrop={handleDrop}
+                            ondragend={handleDragEnd}
+                          >
+                            <td class="field-drag-col">
+                              <template if:true={field.isDraggable}>
+                                <lightning-icon
+                                  icon-name="utility:drag_and_drop"
+                                  size="xx-small"
+                                  class="drag-handle"
+                                ></lightning-icon>
+                              </template>
+                            </td>
+                            <td class="field-label-col">
+                              <span class="field-label-text"
+                                >{field.label}</span
+                              >
+                              <span class="field-type-badge"
+                                >{field.fieldType}</span
+                              >
+                            </td>
+                            <td class="field-api-col">
+                              <code class="field-api-text"
+                                >{field.apiName}</code
+                              >
+                            </td>
+                            <td class="field-check-col">
+                              <lightning-input
+                                type="checkbox"
+                                checked={field.showInPreview}
+                                data-field={field.apiName}
+                                onchange={handlePreviewChange}
+                                variant="label-hidden"
+                                label="Show in preview"
+                              ></lightning-input>
+                            </td>
+                            <td class="field-check-col">
+                              <lightning-input
+                                type="checkbox"
+                                checked={field.showAsFilter}
+                                data-field={field.apiName}
+                                onchange={handleFilterChange}
+                                variant="label-hidden"
+                                label="Show as filter"
+                              ></lightning-input>
+                            </td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+              </template>
+            </template>
+
+            <!-- No object selected -->
+            <template if:false={hasObjectSelected}>
+              <div class="settings-placeholder">
+                <lightning-icon
+                  icon-name="utility:info"
+                  size="small"
+                ></lightning-icon>
+                <p>
+                  Select an object type to configure its preview fields and
+                  filters.
+                </p>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="slds-modal__footer">
+        <lightning-button
+          label="Reset to Defaults"
+          variant="destructive-text"
+          onclick={handleReset}
+          disabled={resetDisabled}
+          class="slds-m-right_small"
+        ></lightning-button>
+        <lightning-button
+          label="Cancel"
+          onclick={handleClose}
+          class="slds-m-right_small"
+        ></lightning-button>
+        <lightning-button
+          label="Save"
+          variant="brand"
+          onclick={handleSave}
+          disabled={saveDisabled}
+        ></lightning-button>
+      </div>
+    </div>
+  </section>
+  <div class="slds-backdrop slds-backdrop_open"></div>
+</template>

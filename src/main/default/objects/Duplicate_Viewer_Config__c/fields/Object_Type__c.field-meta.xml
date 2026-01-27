@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+  <fullName>Object_Type__c</fullName>
+  <label>Object Type</label>
+  <description>The SObject API name this configuration applies to (e.g., Account, Contact)</description>
+  <type>Text</type>
+  <length>255</length>
+  <required>false</required>
+  <externalId>false</externalId>
+  <unique>false</unique>
+</CustomField>

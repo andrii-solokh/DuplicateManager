@@ -10,4 +10,14 @@
     <target>lightning__Tab</target>
     <target>lightning__UrlAddressable</target>
   </targets>
+  <targetConfigs>
+    <targetConfig targets="lightning__AppPage,lightning__HomePage">
+      <property
+        name="pageSize"
+        type="Integer"
+        default="12"
+        label="Default Page Size"
+        description="Default number of duplicate sets to display per page (12, 24, or 48)" />
+    </targetConfig>
+  </targetConfigs>
 </LightningComponentBundle>

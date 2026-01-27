@@ -1,4 +1,4 @@
-import { LightningElement, track, wire } from "lwc";
+import { LightningElement, api, track, wire } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import getDuplicateSetPreviews from "@salesforce/apex/DuplicateViewerController.getDuplicateSetPreviews";
 import getObjectTypeOptions from "@salesforce/apex/DuplicateViewerController.getObjectTypeOptions";
@@ -11,11 +11,16 @@ import getScheduleStatus from "@salesforce/apex/DuplicateViewerController.getSch
 import scheduleJob from "@salesforce/apex/DuplicateViewerController.scheduleJob";
 import unscheduleJob from "@salesforce/apex/DuplicateViewerController.unscheduleJob";
 import abortJob from "@salesforce/apex/DuplicateViewerController.abortJob";
+import hasAdminAccess from "@salesforce/apex/DuplicateViewerConfigController.hasAdminAccess";
+import getFilterFields from "@salesforce/apex/DuplicateViewerController.getFilterFields";
 
-const PAGE_SIZE = 12;
 const JOB_POLL_INTERVAL = 2000; // 2 seconds
 
 export default class DuplicateViewer extends LightningElement {
+  // Page size (configurable via Lightning App Builder)
+  @api pageSize = 12;
+  @track _effectivePageSize = 12;
+
   // Data
   @track duplicateSets = [];
   @track objectTypeOptions = [];
@@ -40,6 +45,14 @@ export default class DuplicateViewer extends LightningElement {
   @track showMergeModal = false;
   @track mergeSetId = null;
 
+  // Settings State
+  @track showSettings = false;
+  @track isAdmin = false;
+
+  // Filter State
+  @track filterFields = [];
+  @track activeFilters = {};
+
   // Schedule State
   @track showSchedulePanel = false;
   @track schedules = [];
@@ -60,7 +73,17 @@ export default class DuplicateViewer extends LightningElement {
   // =========================================================================
 
   connectedCallback() {
+    this._effectivePageSize = this.pageSize || 12;
     this.loadAllData();
+    this.checkAdminAccess();
+  }
+
+  async checkAdminAccess() {
+    try {
+      this.isAdmin = await hasAdminAccess();
+    } catch (err) {
+      this.isAdmin = false;
+    }
   }
 
   disconnectedCallback() {
@@ -106,11 +129,15 @@ export default class DuplicateViewer extends LightningElement {
   }
 
   async loadDuplicateSets() {
+    // Build filter criteria JSON
+    const filterCriteria = this.buildFilterCriteria();
+
     const result = await getDuplicateSetPreviews({
       objectType: this.selectedObjectType,
       searchTerm: this.searchTerm,
-      limitCount: PAGE_SIZE,
-      offsetCount: (this.currentPage - 1) * PAGE_SIZE
+      limitCount: this._effectivePageSize,
+      offsetCount: (this.currentPage - 1) * this._effectivePageSize,
+      filterCriteria: filterCriteria
     });
 
     // Process preview data for display
@@ -247,7 +274,9 @@ export default class DuplicateViewer extends LightningElement {
     // Add icon names to setsByObject
     const setsByObject = (summaryData.setsByObject || []).map((obj) => ({
       ...obj,
-      iconName: this.getObjectIconName(obj.objectType)
+      iconName: this.getObjectIconName(obj.objectType),
+      itemCount: obj.itemCount || 0,
+      iconStyle: `background: ${this.getObjectColor(obj.objectType)}`
     }));
     this.summary = {
       totalSets: summaryData.totalSets || 0,
@@ -353,6 +382,33 @@ export default class DuplicateViewer extends LightningElement {
   // COMPUTED PROPERTIES
   // =========================================================================
 
+  get allCardClass() {
+    const base = "summary-card total-sets clickable";
+    return this.selectedObjectType === "All" ? base + " active" : base;
+  }
+
+  get summarySetsByObject() {
+    return (this.summary.setsByObject || []).map((obj) => ({
+      ...obj,
+      cardClass:
+        this.selectedObjectType === obj.objectType
+          ? "summary-card object-count clickable active"
+          : "summary-card object-count clickable"
+    }));
+  }
+
+  get pageSizeOptions() {
+    return [
+      { label: "12", value: "12" },
+      { label: "24", value: "24" },
+      { label: "48", value: "48" }
+    ];
+  }
+
+  get currentPageSizeString() {
+    return String(this._effectivePageSize);
+  }
+
   get showEmptyState() {
     return (
       !this.isLoading &&
@@ -381,7 +437,7 @@ export default class DuplicateViewer extends LightningElement {
   }
 
   get totalPages() {
-    return Math.ceil(this.totalCount / PAGE_SIZE) || 1;
+    return Math.ceil(this.totalCount / this._effectivePageSize) || 1;
   }
 
   get showPagination() {
@@ -461,11 +517,91 @@ export default class DuplicateViewer extends LightningElement {
   // EVENT HANDLERS
   // =========================================================================
 
-  handleObjectTypeChange(event) {
-    this.selectedObjectType = event.detail.value;
+  handlePageSizeChange(event) {
+    this._effectivePageSize = parseInt(event.detail.value, 10);
     this.currentPage = 1;
     this.isLoading = true;
     this.loadAllData();
+  }
+
+  handleObjectTypeChange(event) {
+    this.selectedObjectType = event.detail.value;
+    this.currentPage = 1;
+    this.activeFilters = {};
+    this.isLoading = true;
+    this.loadFilterFields();
+    this.loadAllData();
+  }
+
+  // =========================================================================
+  // FILTER METHODS
+  // =========================================================================
+
+  async loadFilterFields() {
+    if (!this.selectedObjectType || this.selectedObjectType === "All") {
+      this.filterFields = [];
+      return;
+    }
+
+    try {
+      const fields = await getFilterFields({
+        objectType: this.selectedObjectType
+      });
+      this.filterFields = (fields || []).map((f) => ({
+        ...f,
+        isPicklist:
+          f.fieldType === "PICKLIST" || f.fieldType === "MULTIPICKLIST",
+        picklistOptions: f.picklistValues
+          ? [
+              { label: "All", value: "" },
+              ...f.picklistValues.map((v) => ({ label: v, value: v }))
+            ]
+          : []
+      }));
+    } catch (err) {
+      console.error("Error loading filter fields:", err);
+      this.filterFields = [];
+    }
+  }
+
+  handleFilterChange(event) {
+    const fieldName = event.target.dataset.field;
+    const value = event.detail ? event.detail.value : event.target.value;
+
+    if (value) {
+      this.activeFilters = { ...this.activeFilters, [fieldName]: value };
+    } else {
+      const updated = { ...this.activeFilters };
+      delete updated[fieldName];
+      this.activeFilters = updated;
+    }
+
+    this.currentPage = 1;
+    this.isLoading = true;
+    this.loadAllData();
+  }
+
+  handleClearFilters() {
+    this.activeFilters = {};
+    this.currentPage = 1;
+    this.isLoading = true;
+    this.loadAllData();
+  }
+
+  buildFilterCriteria() {
+    const entries = Object.entries(this.activeFilters);
+    if (entries.length === 0) return null;
+
+    const criteria = entries.map(([field, value]) => ({ field, value }));
+    return JSON.stringify(criteria);
+  }
+
+  get hasFilterFields() {
+    return this.filterFields.length > 0;
+  }
+
+  get hasActiveFilters() {
+    return Object.keys(this.activeFilters).length > 0;
   }
 
   handleSummaryCardClick(event) {
@@ -666,6 +802,25 @@ export default class DuplicateViewer extends LightningElement {
   // =========================================================================
   // SCHEDULING METHODS
   // =========================================================================
+
+  // =========================================================================
+  // SETTINGS METHODS
+  // =========================================================================
+
+  handleOpenSettings() {
+    this.showSettings = true;
+  }
+
+  handleCloseSettings() {
+    this.showSettings = false;
+  }
+
+  async handleSettingsSave() {
+    this.showSettings = false;
+    this.isLoading = true;
+    this.loadFilterFields();
+    await this.loadAllData();
+  }
 
   handleToggleSchedulePanel() {
     this.showSchedulePanel = !this.showSchedulePanel;

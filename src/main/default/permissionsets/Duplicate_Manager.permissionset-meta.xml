@@ -5,12 +5,6 @@
   <hasActivationRequired>false</hasActivationRequired>
   <license>Salesforce</license>
 
-  <!-- Custom Tab Access -->
-  <tabSettings>
-    <tab>Duplicate_Manager</tab>
-    <visibility>Visible</visibility>
-  </tabSettings>
-
   <!-- Apex Class Access -->
   <classAccesses>
     <apexClass>DuplicateViewerController</apexClass>
@@ -28,8 +22,57 @@
     <apexClass>DuplicateScannerScheduler</apexClass>
     <enabled>true</enabled>
   </classAccesses>
+  <classAccesses>
+    <apexClass>DuplicateViewerConfigController</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
 
-  <!-- DuplicateRecordSet Object Permissions -->
+  <!-- Field Permissions -->
+  <fieldPermissions>
+    <editable>false</editable>
+    <field>Duplicate_Viewer_Config__c.Field_API_Name__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>false</editable>
+    <field>Duplicate_Viewer_Config__c.Object_Type__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>false</editable>
+    <field>Duplicate_Viewer_Config__c.Show_As_Filter__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>false</editable>
+    <field>Duplicate_Viewer_Config__c.Show_In_Preview__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>false</editable>
+    <field>Duplicate_Viewer_Config__c.Sort_Order__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+
+  <!-- Object Permissions -->
+  <objectPermissions>
+    <allowCreate>false</allowCreate>
+    <allowDelete>false</allowDelete>
+    <allowEdit>false</allowEdit>
+    <allowRead>true</allowRead>
+    <modifyAllRecords>false</modifyAllRecords>
+    <object>Duplicate_Viewer_Config__c</object>
+    <viewAllRecords>true</viewAllRecords>
+  </objectPermissions>
+  <objectPermissions>
+    <allowCreate>true</allowCreate>
+    <allowDelete>true</allowDelete>
+    <allowEdit>true</allowEdit>
+    <allowRead>true</allowRead>
+    <modifyAllRecords>true</modifyAllRecords>
+    <object>DuplicateRecordItem</object>
+    <viewAllRecords>true</viewAllRecords>
+  </objectPermissions>
   <objectPermissions>
     <allowCreate>true</allowCreate>
     <allowDelete>true</allowDelete>
@@ -40,14 +83,9 @@
     <viewAllRecords>true</viewAllRecords>
   </objectPermissions>
 
-  <!-- DuplicateRecordItem Object Permissions -->
-  <objectPermissions>
-    <allowCreate>true</allowCreate>
-    <allowDelete>true</allowDelete>
-    <allowEdit>true</allowEdit>
-    <allowRead>true</allowRead>
-    <modifyAllRecords>true</modifyAllRecords>
-    <object>DuplicateRecordItem</object>
-    <viewAllRecords>true</viewAllRecords>
-  </objectPermissions>
+  <!-- Custom Tab Access -->
+  <tabSettings>
+    <tab>Duplicate_Manager</tab>
+    <visibility>Visible</visibility>
+  </tabSettings>
 </PermissionSet>

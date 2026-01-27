@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+  <fullName>Show_As_Filter__c</fullName>
+  <label>Show As Filter</label>
+  <description>When checked, this field appears as a filter option in the Duplicate Viewer</description>
+  <type>Checkbox</type>
+  <defaultValue>false</defaultValue>
+</CustomField>

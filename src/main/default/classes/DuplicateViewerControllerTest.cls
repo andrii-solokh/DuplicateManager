@@ -128,7 +128,8 @@ private class DuplicateViewerControllerTest {
       null,
       null,
       10,
-      0
+      0,
+      null
     );
     Test.stopTest();
 
@@ -152,7 +153,8 @@ private class DuplicateViewerControllerTest {
       'Contact',
       null,
       10,
-      0
+      0,
+      null
     );
     Test.stopTest();
 
@@ -204,7 +206,8 @@ private class DuplicateViewerControllerTest {
           'Contact',
           null,
           10,
-          0
+          0,
+          null
         );
         Test.stopTest();
 
@@ -270,7 +273,8 @@ private class DuplicateViewerControllerTest {
           'Contact',
           null,
           10,
-          0
+          0,
+          null
         );
         Test.stopTest();
 
@@ -825,6 +829,7 @@ private class DuplicateViewerControllerTest {
     DuplicateViewerController.ObjectCount count = new DuplicateViewerController.ObjectCount();
     count.objectType = 'Contact';
     count.count = 15;
+    count.itemCount = 30;
 
     System.assertEquals(
       'Contact',
@@ -832,6 +837,7 @@ private class DuplicateViewerControllerTest {
       'Object type should match'
     );
     System.assertEquals(15, count.count, 'Count should be 15');
+    System.assertEquals(30, count.itemCount, 'Item count should be 30');
   }
 
   @IsTest
@@ -924,7 +930,8 @@ private class DuplicateViewerControllerTest {
           'Contact',
           null,
           10,
-          0
+          0,
+          null
         );
         Test.stopTest();
 
@@ -1211,7 +1218,8 @@ private class DuplicateViewerControllerTest {
       'Contact',
       'test',
       10,
-      0
+      0,
+      null
     );
     Test.stopTest();
 
@@ -1272,10 +1280,208 @@ private class DuplicateViewerControllerTest {
       'Account',
       'search term',
       10,
-      0
+      0,
+      null
     );
     Test.stopTest();
 
     System.assertNotEquals(null, result, 'Result should not be null');
+  }
+
+  // =====================================================================
+  // FILTER TESTS
+  // =====================================================================
+
+  @IsTest
+  static void testGetFilterFieldsNoConfig() {
+    Test.startTest();
+    List<DuplicateViewerController.FilterFieldConfig> fields = DuplicateViewerController.getFilterFields(
+      'Contact'
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, fields, 'Fields should not be null');
+    System.assertEquals(0, fields.size(), 'Should be empty with no config');
+  }
+
+  @IsTest
+  static void testGetFilterFieldsBlank() {
+    Test.startTest();
+    List<DuplicateViewerController.FilterFieldConfig> fields = DuplicateViewerController.getFilterFields(
+      ''
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, fields, 'Fields should not be null');
+    System.assertEquals(0, fields.size(), 'Should be empty for blank');
+  }
+
+  @IsTest
+  static void testGetFilterFieldsAll() {
+    Test.startTest();
+    List<DuplicateViewerController.FilterFieldConfig> fields = DuplicateViewerController.getFilterFields(
+      'All'
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, fields, 'Fields should not be null');
+    System.assertEquals(0, fields.size(), 'Should be empty for All');
+  }
+
+  @IsTest
+  static void testGetFilterFieldsWithConfig() {
+    // Create filter config
+    insert new Duplicate_Viewer_Config__c(
+      Object_Type__c = 'Contact',
+      Field_API_Name__c = 'Email',
+      Sort_Order__c = 1,
+      Show_In_Preview__c = false,
+      Show_As_Filter__c = true
+    );
+
+    Test.startTest();
+    List<DuplicateViewerController.FilterFieldConfig> fields = DuplicateViewerController.getFilterFields(
+      'Contact'
+    );
+    Test.stopTest();
+
+    System.assertEquals(1, fields.size(), 'Should return 1 filter field');
+    System.assertEquals(
+      'Email',
+      fields[0].fieldApiName,
+      'Field should be Email'
+    );
+    System.assertNotEquals(
+      null,
+      fields[0].fieldLabel,
+      'Label should not be null'
+    );
+    System.assertNotEquals(
+      null,
+      fields[0].fieldType,
+      'Type should not be null'
+    );
+  }
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsWithFilterCriteria() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+      'Contact',
+      null,
+      10,
+      0,
+      '[{"field":"Email","value":"test@example.com"}]'
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+  }
+
+  @IsTest
+  static void testGetDuplicateSetPreviewsWithEmptyFilter() {
+    Test.startTest();
+    DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+      'Contact',
+      null,
+      10,
+      0,
+      '[]'
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+  }
+
+  @IsTest
+  static void testFilterFieldConfigWrapper() {
+    DuplicateViewerController.FilterFieldConfig config = new DuplicateViewerController.FilterFieldConfig();
+    config.fieldApiName = 'Industry';
+    config.fieldLabel = 'Industry';
+    config.fieldType = 'PICKLIST';
+    config.picklistValues = new List<String>{ 'Technology', 'Finance' };
+
+    System.assertEquals(
+      'Industry',
+      config.fieldApiName,
+      'API name should match'
+    );
+    System.assertEquals(
+      2,
+      config.picklistValues.size(),
+      'Should have 2 picklist values'
+    );
+  }
+
+  @IsTest
+  static void testFilterCriterionWrapper() {
+    DuplicateViewerController.FilterCriterion criterion = new DuplicateViewerController.FilterCriterion();
+    criterion.field = 'Email';
+    criterion.value = 'test@example.com';
+
+    System.assertEquals('Email', criterion.field, 'Field should match');
+    System.assertEquals(
+      'test@example.com',
+      criterion.value,
+      'Value should match'
+    );
+  }
+
+  @IsTest
+  static void testConfiguredPreviewFieldsPriority() {
+    // Create config for Contact
+    insert new Duplicate_Viewer_Config__c(
+      Object_Type__c = 'Contact',
+      Field_API_Name__c = 'Department',
+      Sort_Order__c = 1,
+      Show_In_Preview__c = true,
+      Show_As_Filter__c = false
+    );
+
+    // Get an active duplicate rule
+    List<DuplicateRule> rules = [
+      SELECT Id
+      FROM DuplicateRule
+      WHERE SobjectType = 'Contact' AND IsActive = TRUE
+      LIMIT 1
+    ];
+
+    if (!rules.isEmpty()) {
+      DuplicateRecordSet drs = new DuplicateRecordSet();
+      drs.DuplicateRuleId = rules[0].Id;
+      insert drs;
+
+      Contact c = [SELECT Id FROM Contact LIMIT 1];
+      DuplicateRecordItem item = new DuplicateRecordItem();
+      item.DuplicateRecordSetId = drs.Id;
+      item.RecordId = c.Id;
+      insert item;
+
+      Test.startTest();
+      DuplicateViewerController.DuplicateDataResult result = DuplicateViewerController.getDuplicateSetPreviews(
+        'Contact',
+        null,
+        10,
+        0,
+        null
+      );
+      Test.stopTest();
+
+      System.assertNotEquals(null, result, 'Result should not be null');
+      if (!result.duplicateSets.isEmpty()) {
+        DuplicateViewerController.DuplicateSetWrapper firstSet = result.duplicateSets[0];
+        if (
+          firstSet.previewFields != null && !firstSet.previewFields.isEmpty()
+        ) {
+          System.assert(
+            firstSet.previewFields.contains('Department'),
+            'Configured field Department should be in preview fields'
+          );
+        }
+      }
+
+      delete item;
+      delete drs;
+    }
   }
 }

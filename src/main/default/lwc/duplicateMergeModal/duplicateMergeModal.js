@@ -36,8 +36,26 @@ export default class DuplicateMergeModal extends NavigationMixin(
   // LIFECYCLE
   // =========================================================================
 
+  _hasFocused = false;
+
   connectedCallback() {
     this.loadComparison();
+  }
+
+  renderedCallback() {
+    if (!this._hasFocused) {
+      this._hasFocused = true;
+      const dialog = this.template.querySelector('section[role="dialog"]');
+      if (dialog) {
+        dialog.focus();
+      }
+    }
+  }
+
+  handleKeyDown(event) {
+    if (event.key === "Escape") {
+      this.handleClose();
+    }
   }
 
   // =========================================================================

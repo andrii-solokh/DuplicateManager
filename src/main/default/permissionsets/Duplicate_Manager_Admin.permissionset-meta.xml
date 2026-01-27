@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+  <label>Duplicate Manager Admin</label>
+  <description>Provides full access to Duplicate Viewer configuration. Assign to admins who need to configure preview fields and filters.</description>
+  <hasActivationRequired>false</hasActivationRequired>
+  <license>Salesforce</license>
+
+  <!-- Apex Class Access -->
+  <classAccesses>
+    <apexClass>DuplicateViewerConfigController</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+
+  <!-- Field Permissions -->
+  <fieldPermissions>
+    <editable>true</editable>
+    <field>Duplicate_Viewer_Config__c.Field_API_Name__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>true</editable>
+    <field>Duplicate_Viewer_Config__c.Object_Type__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>true</editable>
+    <field>Duplicate_Viewer_Config__c.Show_As_Filter__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>true</editable>
+    <field>Duplicate_Viewer_Config__c.Show_In_Preview__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+  <fieldPermissions>
+    <editable>true</editable>
+    <field>Duplicate_Viewer_Config__c.Sort_Order__c</field>
+    <readable>true</readable>
+  </fieldPermissions>
+
+  <!-- Object Permissions -->
+  <objectPermissions>
+    <allowCreate>true</allowCreate>
+    <allowDelete>true</allowDelete>
+    <allowEdit>true</allowEdit>
+    <allowRead>true</allowRead>
+    <modifyAllRecords>true</modifyAllRecords>
+    <object>Duplicate_Viewer_Config__c</object>
+    <viewAllRecords>true</viewAllRecords>
+  </objectPermissions>
+</PermissionSet>

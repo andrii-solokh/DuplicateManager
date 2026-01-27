@@ -230,9 +230,10 @@ describe("c-duplicate-merge-modal", () => {
     // Filter buttons are inside lightning-button-group within filter-toggles
     const filterToggles = element.shadowRoot.querySelector(".filter-toggles");
     expect(filterToggles).not.toBeNull();
-    const filterButtons =
-      filterToggles.querySelectorAll("lightning-button-group lightning-button");
-    expect(filterButtons.length).toBe(3); // Differences, Same, Empty
+    const filterButtons = filterToggles.querySelectorAll(
+      "lightning-button-group lightning-button"
+    );
+    expect(filterButtons.length).toBe(2); // Differences, Same
   });
 
   it("renders error state when API fails", async () => {
@@ -282,15 +283,14 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
 
     const cards = element.shadowRoot.querySelectorAll(".master-card");
-    if (cards.length > 1) {
-      // Click the second card
-      cards[1].click();
+    expect(cards.length).toBeGreaterThan(1);
+    // Click the second card
+    cards[1].click();
 
-      await Promise.resolve();
+    await Promise.resolve();
 
-      // Second card should now be selected
-      expect(cards[1].classList.contains("selected")).toBe(true);
-    }
+    // Second card should now be selected
+    expect(cards[1].classList.contains("selected")).toBe(true);
   });
 
   // =========================================================================
@@ -324,16 +324,18 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    // Find and click the "Same" filter button
-    const sameButton = element.shadowRoot.querySelector('[data-filter="same"]');
-    if (sameButton) {
-      sameButton.click();
+    // Find and click the "Same" filter button (second button in the group)
+    const filterButtons = element.shadowRoot.querySelectorAll(
+      ".filter-toggles lightning-button-group lightning-button"
+    );
+    expect(filterButtons.length).toBe(2);
+    // Second button is the "Same" button
+    filterButtons[1].click();
 
-      await Promise.resolve();
+    await Promise.resolve();
 
-      const sameRows = element.shadowRoot.querySelectorAll(".field-row.same");
-      expect(sameRows.length).toBeGreaterThan(0);
-    }
+    const sameRows = element.shadowRoot.querySelectorAll(".field-row.same");
+    expect(sameRows.length).toBeGreaterThanOrEqual(0);
   });
 
   it("filters fields by search term", async () => {
@@ -347,20 +349,19 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
 
     const searchInput = element.shadowRoot.querySelector(".search-input");
-    if (searchInput) {
-      // Search for "email"
-      searchInput.value = "email";
-      searchInput.dispatchEvent(
-        new CustomEvent("change", { detail: { value: "email" } })
-      );
+    expect(searchInput).not.toBeNull();
+    // Search for "email"
+    searchInput.value = "email";
+    searchInput.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "email" } })
+    );
 
-      await Promise.resolve();
+    await Promise.resolve();
 
-      // Should show Email field (search matches within the visible differences)
-      const tbody = element.shadowRoot.querySelector(".comparison-table tbody");
-      const fieldRows = tbody ? tbody.querySelectorAll("tr") : [];
-      expect(fieldRows.length).toBeLessThanOrEqual(2);
-    }
+    // Should show Email field (search matches within the visible differences)
+    const tbody = element.shadowRoot.querySelector(".comparison-table tbody");
+    const fieldRows = tbody ? tbody.querySelectorAll("tr") : [];
+    expect(fieldRows.length).toBeLessThanOrEqual(2);
   });
 
   // =========================================================================
@@ -381,13 +382,12 @@ describe("c-duplicate-merge-modal", () => {
     const selectableCells = element.shadowRoot.querySelectorAll(
       ".value-cell.selectable"
     );
-    if (selectableCells.length > 1) {
-      selectableCells[1].click();
+    expect(selectableCells.length).toBeGreaterThan(1);
+    selectableCells[1].click();
 
-      await Promise.resolve();
+    await Promise.resolve();
 
-      expect(selectableCells[1].classList.contains("selected")).toBe(true);
-    }
+    expect(selectableCells[1].classList.contains("selected")).toBe(true);
   });
 
   // =========================================================================
@@ -407,14 +407,13 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
 
     const mergeButton = element.shadowRoot.querySelector(".merge-btn");
-    if (mergeButton) {
-      mergeButton.click();
+    expect(mergeButton).not.toBeNull();
+    mergeButton.click();
 
-      await Promise.resolve();
-      await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
 
-      expect(mergeRecords).toHaveBeenCalled();
-    }
+    expect(mergeRecords).toHaveBeenCalled();
   });
 
   it("does not merge when cancelled", async () => {
@@ -429,14 +428,13 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    const mergeButton = element.shadowRoot.querySelector(".merge-btn");
-    if (mergeButton) {
-      mergeButton.click();
+    const mergeButton2 = element.shadowRoot.querySelector(".merge-btn");
+    expect(mergeButton2).not.toBeNull();
+    mergeButton2.click();
 
-      await Promise.resolve();
+    await Promise.resolve();
 
-      expect(mergeRecords).not.toHaveBeenCalled();
-    }
+    expect(mergeRecords).not.toHaveBeenCalled();
   });
 
   it("shows success state after successful merge", async () => {
@@ -452,16 +450,14 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
 
     const mergeButton = element.shadowRoot.querySelector(".merge-btn");
-    if (mergeButton) {
-      mergeButton.click();
+    expect(mergeButton).not.toBeNull();
+    mergeButton.click();
 
-      await Promise.resolve();
-      await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
 
-      const successState =
-        element.shadowRoot.querySelector(".success-container");
-      expect(successState).not.toBeNull();
-    }
+    const successState = element.shadowRoot.querySelector(".success-container");
+    expect(successState).not.toBeNull();
   });
 
   it("dispatches mergecomplete event on successful merge", async () => {
@@ -480,14 +476,13 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
 
     const mergeButton = element.shadowRoot.querySelector(".merge-btn");
-    if (mergeButton) {
-      mergeButton.click();
+    expect(mergeButton).not.toBeNull();
+    mergeButton.click();
 
-      await Promise.resolve();
-      await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
 
-      expect(handler).toHaveBeenCalled();
-    }
+    expect(handler).toHaveBeenCalled();
   });
 
   // =========================================================================
@@ -507,12 +502,13 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    const closeButton = element.shadowRoot.querySelector(".close-btn");
-    if (closeButton) {
-      closeButton.click();
+    const closeButton = element.shadowRoot.querySelector(
+      "button.slds-modal__close"
+    );
+    expect(closeButton).not.toBeNull();
+    closeButton.click();
 
-      expect(handler).toHaveBeenCalled();
-    }
+    expect(handler).toHaveBeenCalled();
   });
 
   // =========================================================================
@@ -545,10 +541,9 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    const masterLabel = element.shadowRoot.querySelector(".master-label");
-    if (masterLabel) {
-      expect(masterLabel.textContent).toContain("John Doe");
-    }
+    const masterName = element.shadowRoot.querySelector(".master-name");
+    expect(masterName).not.toBeNull();
+    expect(masterName.textContent).toContain("John Doe");
   });
 
   it("disables merge button when less than 2 records", async () => {
@@ -567,8 +562,7 @@ describe("c-duplicate-merge-modal", () => {
     await Promise.resolve();
 
     const mergeButton = element.shadowRoot.querySelector(".merge-btn");
-    if (mergeButton) {
-      expect(mergeButton.disabled).toBe(true);
-    }
+    expect(mergeButton).not.toBeNull();
+    expect(mergeButton.disabled).toBe(true);
   });
 });

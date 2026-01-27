@@ -8,6 +8,8 @@ import deleteDuplicateSet from "@salesforce/apex/DuplicateViewerController.delet
 import runDuplicateScan from "@salesforce/apex/DuplicateViewerController.runDuplicateScan";
 import getJobStatus from "@salesforce/apex/DuplicateViewerController.getJobStatus";
 import getRecentJobs from "@salesforce/apex/DuplicateViewerController.getRecentJobs";
+import getFilterFields from "@salesforce/apex/DuplicateViewerController.getFilterFields";
+import hasAdminAccess from "@salesforce/apex/DuplicateViewerConfigController.hasAdminAccess";
 
 // Mock Apex methods
 jest.mock(
@@ -57,6 +59,21 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/DuplicateViewerController.unscheduleJob",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/DuplicateViewerController.getFilterFields",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/DuplicateViewerConfigController.hasAdminAccess",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/DuplicateViewerController.abortJob",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -147,6 +164,8 @@ describe("c-duplicate-viewer", () => {
     getObjectTypeOptions.mockResolvedValue(MOCK_OBJECT_OPTIONS);
     getDuplicateSummary.mockResolvedValue(MOCK_SUMMARY);
     getRecentJobs.mockResolvedValue(MOCK_RECENT_JOBS);
+    getFilterFields.mockResolvedValue([]);
+    hasAdminAccess.mockResolvedValue(true);
   });
 
   afterEach(() => {

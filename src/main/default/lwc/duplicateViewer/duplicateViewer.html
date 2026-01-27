@@ -15,6 +15,16 @@
           View and manage duplicate records across your organization
         </p>
       </div>
+      <template if:true={isAdmin}>
+        <lightning-button-icon
+          icon-name="utility:settings"
+          variant="bare-inverse"
+          alternative-text="Field configuration"
+          onclick={handleOpenSettings}
+          class="header-settings-btn"
+          title="Configure preview fields and filters"
+        ></lightning-button-icon>
+      </template>
     </header>
 
     <!-- Job Status Banner (when job is running) -->
@@ -59,54 +69,36 @@
     <section class="summary-section">
       <div class="summary-cards">
         <div
-          class="summary-card total-sets clickable"
+          class={allCardClass}
           onclick={handleSummaryCardClick}
           data-object="All"
         >
           <div class="card-icon">
             <lightning-icon
-              icon-name="utility:collection_variable"
-              size="small"
+              icon-name="utility:groups"
+              size="xx-small"
             ></lightning-icon>
           </div>
-          <div class="card-content">
-            <span class="card-value">{summary.totalSets}</span>
-            <span class="card-label">Duplicate Sets</span>
-          </div>
+          <span class="card-value">{summary.totalSets}</span>
+          <span class="card-label">Duplicate Sets</span>
+          <span class="card-records">{summary.totalItems} records</span>
         </div>
-        <div
-          class="summary-card total-items clickable"
-          onclick={handleSummaryCardClick}
-          data-object="All"
-        >
-          <div class="card-icon">
-            <lightning-icon
-              icon-name="utility:record"
-              size="small"
-            ></lightning-icon>
-          </div>
-          <div class="card-content">
-            <span class="card-value">{summary.totalItems}</span>
-            <span class="card-label">Total Records</span>
-          </div>
-        </div>
-        <template for:each={summary.setsByObject} for:item="objCount">
+        <template for:each={summarySetsByObject} for:item="objCount">
           <div
             key={objCount.objectType}
-            class="summary-card object-count clickable"
+            class={objCount.cardClass}
             onclick={handleSummaryCardClick}
             data-object={objCount.objectType}
           >
-            <div class="card-icon">
+            <div class="card-icon" style={objCount.iconStyle}>
               <lightning-icon
                 icon-name={objCount.iconName}
-                size="small"
+                size="xx-small"
               ></lightning-icon>
             </div>
-            <div class="card-content">
-              <span class="card-value">{objCount.count}</span>
-              <span class="card-label">{objCount.objectType} Sets</span>
-            </div>
+            <span class="card-value">{objCount.count}</span>
+            <span class="card-label">{objCount.objectType} Sets</span>
+            <span class="card-records">{objCount.itemCount} records</span>
           </div>
         </template>
       </div>
@@ -255,6 +247,54 @@
       </template>
     </section>
 
+    <!-- Dynamic Filters -->
+    <template if:true={hasFilterFields}>
+      <section class="filter-section">
+        <div class="filter-row">
+          <template for:each={filterFields} for:item="filterField">
+            <div key={filterField.fieldApiName} class="filter-item">
+              <template if:true={filterField.isPicklist}>
+                <lightning-combobox
+                  name={filterField.fieldApiName}
+                  label={filterField.fieldLabel}
+                  value=""
+                  options={filterField.picklistOptions}
+                  data-field={filterField.fieldApiName}
+                  onchange={handleFilterChange}
+                  variant="label-stacked"
+                  class="filter-input"
+                >
+                </lightning-combobox>
+              </template>
+              <template if:false={filterField.isPicklist}>
+                <lightning-input
+                  type="text"
+                  label={filterField.fieldLabel}
+                  data-field={filterField.fieldApiName}
+                  onchange={handleFilterChange}
+                  variant="label-stacked"
+                  class="filter-input"
+                  placeholder="Filter..."
+                >
+                </lightning-input>
+              </template>
+            </div>
+          </template>
+          <template if:true={hasActiveFilters}>
+            <div class="filter-clear">
+              <lightning-button
+                label="Clear Filters"
+                icon-name="utility:clear"
+                variant="text"
+                onclick={handleClearFilters}
+              >
+              </lightning-button>
+            </div>
+          </template>
+        </div>
+      </section>
+    </template>
+
     <!-- Error State -->
     <template if:true={error}>
       <div class="error-container">
@@ -316,6 +356,42 @@
             <span class="search-results-message">{searchResultsMessage}</span>
           </template>
         </div>
+
+        <!-- Top Pagination -->
+        <template if:true={showPagination}>
+          <div class="pagination pagination-top">
+            <lightning-button
+              label="Previous"
+              icon-name="utility:chevronleft"
+              onclick={handlePrevPage}
+              disabled={isPrevDisabled}
+              class="page-btn"
+            >
+            </lightning-button>
+            <span class="page-info">Page {currentPage} of {totalPages}</span>
+            <lightning-button
+              label="Next"
+              icon-name="utility:chevronright"
+              icon-position="right"
+              onclick={handleNextPage}
+              disabled={isNextDisabled}
+              class="page-btn"
+            >
+            </lightning-button>
+            <div class="page-size-selector">
+              <lightning-combobox
+                name="pageSize"
+                label="Per page"
+                value={currentPageSizeString}
+                options={pageSizeOptions}
+                onchange={handlePageSizeChange}
+                variant="label-inline"
+                class="page-size-combo"
+              >
+              </lightning-combobox>
+            </div>
+          </div>
+        </template>
 
         <!-- Grid Loading Overlay -->
         <template if:true={showGridLoading}>
@@ -459,9 +535,9 @@
           </div>
         </template>
 
-        <!-- Pagination -->
+        <!-- Bottom Pagination -->
         <template if:true={showPagination}>
-          <div class="pagination">
+          <div class="pagination pagination-bottom">
             <lightning-button
               label="Previous"
               icon-name="utility:chevronleft"
@@ -480,6 +556,18 @@
               class="page-btn"
             >
             </lightning-button>
+            <div class="page-size-selector page-size-flip">
+              <lightning-combobox
+                name="pageSizeBottom"
+                label="Per page"
+                value={currentPageSizeString}
+                options={pageSizeOptions}
+                onchange={handlePageSizeChange}
+                variant="label-inline"
+                class="page-size-combo"
+              >
+              </lightning-combobox>
+            </div>
           </div>
         </template>
       </section>
@@ -494,5 +582,14 @@
       onmergecomplete={handleMergeComplete}
     >
     </c-duplicate-merge-modal>
+  </template>
+
+  <!-- Settings Modal -->
+  <template if:true={showSettings}>
+    <c-duplicate-viewer-settings
+      onclose={handleCloseSettings}
+      onsave={handleSettingsSave}
+    >
+    </c-duplicate-viewer-settings>
   </template>
 </template>

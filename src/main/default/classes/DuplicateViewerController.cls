@@ -22,8 +22,45 @@ public with sharing class DuplicateViewerController {
     Integer limitCount,
     Integer offsetCount
   ) {
+    return getDuplicateSetsFiltered(
+      objectType,
+      searchTerm,
+      limitCount,
+      offsetCount,
+      null
+    );
+  }
+
+  /**
+   * @description Retrieves duplicate record sets with optional filter criteria.
+   */
+  private static DuplicateDataResult getDuplicateSetsFiltered(
+    String objectType,
+    String searchTerm,
+    Integer limitCount,
+    Integer offsetCount,
+    String filterCriteria
+  ) {
     try {
       DuplicateDataResult result = new DuplicateDataResult();
+
+      // If filtering by field values, find matching set IDs
+      Set<Id> filterMatchingSetIds = null;
+      if (
+        String.isNotBlank(filterCriteria) &&
+        String.isNotBlank(objectType) &&
+        objectType != 'All'
+      ) {
+        filterMatchingSetIds = findSetsMatchingFilters(
+          objectType,
+          filterCriteria
+        );
+        if (filterMatchingSetIds.isEmpty()) {
+          result.totalCount = 0;
+          result.duplicateSets = new List<DuplicateSetWrapper>();
+          return result;
+        }
+      }
 
       // If searching, find matching record IDs first
       Set<Id> matchingSetIds = null;
@@ -54,6 +91,11 @@ public with sharing class DuplicateViewerController {
       // Filter by matching set IDs if searching
       if (matchingSetIds != null) {
         whereClauses.add('Id IN :matchingSetIds');
+      }
+
+      // Filter by field value matching set IDs
+      if (filterMatchingSetIds != null) {
+        whereClauses.add('Id IN :filterMatchingSetIds');
       }
 
       if (!whereClauses.isEmpty()) {
@@ -110,15 +152,17 @@ public with sharing class DuplicateViewerController {
     String objectType,
     String searchTerm,
     Integer limitCount,
-    Integer offsetCount
+    Integer offsetCount,
+    String filterCriteria
   ) {
     try {
-      // First get the basic duplicate sets data
-      DuplicateDataResult result = getDuplicateSets(
+      // First get the basic duplicate sets data (with filter support)
+      DuplicateDataResult result = getDuplicateSetsFiltered(
         objectType,
         searchTerm,
         limitCount,
-        offsetCount
+        offsetCount,
+        filterCriteria
       );
 
       if (result.duplicateSets == null || result.duplicateSets.isEmpty()) {
@@ -129,14 +173,23 @@ public with sharing class DuplicateViewerController {
       Map<String, Schema.SObjectType> globalDescribeMap = Schema.getGlobalDescribe();
       Map<String, Map<String, Schema.SObjectField>> fieldMapsByObject = new Map<String, Map<String, Schema.SObjectField>>();
 
-      // Enhance each set with preview data
+      // Cache preview fields per objectType to avoid repeated SOQL
+      Map<String, List<String>> previewFieldCache = new Map<String, List<String>>();
+
+      // First pass: resolve preview fields and field labels (cached per objectType)
       for (DuplicateSetWrapper wrapper : result.duplicateSets) {
         try {
-          // Get preview field configuration from the duplicate rule
-          List<String> previewFieldNames = getPreviewFieldsForRule(
-            wrapper.duplicateRuleId,
-            wrapper.objectType
-          );
+          String cacheKey = wrapper.objectType + ':' + wrapper.duplicateRuleId;
+          if (!previewFieldCache.containsKey(cacheKey)) {
+            previewFieldCache.put(
+              cacheKey,
+              getPreviewFieldsForRule(
+                wrapper.duplicateRuleId,
+                wrapper.objectType
+              )
+            );
+          }
+          List<String> previewFieldNames = previewFieldCache.get(cacheKey);
 
           if (previewFieldNames.isEmpty()) {
             continue;
@@ -144,7 +197,7 @@ public with sharing class DuplicateViewerController {
 
           wrapper.previewFields = previewFieldNames;
 
-          // Get field labels
+          // Get field labels (cached per objectType)
           if (!fieldMapsByObject.containsKey(wrapper.objectType)) {
             Schema.SObjectType sObjType = globalDescribeMap.get(
               wrapper.objectType
@@ -172,22 +225,43 @@ public with sharing class DuplicateViewerController {
               }
             }
           }
-
-          // Get sample records for this set
-          wrapper.sampleRecords = getSampleRecordsForSet(
-            wrapper.id,
-            wrapper.objectType,
-            previewFieldNames,
-            2
+        } catch (Exception e) {
+          System.debug(
+            'Error getting preview fields for set ' +
+              wrapper.id +
+              ': ' +
+              e.getMessage()
           );
+        }
+      }
 
-          // Calculate field differences across sample records
+      // Batch sample record queries to avoid per-set SOQL
+      Integer sampleSize = 2;
+      Map<Id, List<RecordPreview>> batchSamples = getBatchSampleRecords(
+        result.duplicateSets,
+        previewFieldCache,
+        fieldMapsByObject,
+        sampleSize
+      );
+
+      // Second pass: assign sample records and calculate differences
+      for (DuplicateSetWrapper wrapper : result.duplicateSets) {
+        try {
+          if (
+            wrapper.previewFields == null || wrapper.previewFields.isEmpty()
+          ) {
+            continue;
+          }
+
+          wrapper.sampleRecords = batchSamples.containsKey(wrapper.id)
+            ? batchSamples.get(wrapper.id)
+            : new List<RecordPreview>();
+
           wrapper.fieldDifferences = calculateFieldDifferences(
             wrapper.sampleRecords,
-            previewFieldNames
+            wrapper.previewFields
           );
         } catch (Exception e) {
-          // Log error but continue processing other sets
           System.debug(
             'Error getting preview data for set ' +
               wrapper.id +
@@ -216,14 +290,53 @@ public with sharing class DuplicateViewerController {
     Id ruleId,
     String objectType
   ) {
-    // First, try to get fields from matching rules for this object
+    // Priority 1: Check Duplicate_Viewer_Config__c for configured preview fields
+    List<String> configuredFields = getConfiguredPreviewFields(objectType);
+    if (!configuredFields.isEmpty()) {
+      return configuredFields;
+    }
+
+    // Priority 2: Try to get fields from matching rules for this object
     List<String> matchingFields = getMatchingRuleFields(objectType);
     if (!matchingFields.isEmpty()) {
       return matchingFields;
     }
 
-    // Fall back to defaults if no matching rule fields found
+    // Priority 3: Fall back to defaults if no matching rule fields found
     return getDefaultPreviewFields(objectType);
+  }
+
+  /**
+   * @description Gets configured preview fields from Duplicate_Viewer_Config__c.
+   * @param objectType The object type
+   * @return List of field API names configured for preview, or empty if none configured
+   */
+  private static List<String> getConfiguredPreviewFields(String objectType) {
+    List<String> fields = new List<String>();
+
+    if (String.isBlank(objectType)) {
+      return fields;
+    }
+
+    try {
+      List<Duplicate_Viewer_Config__c> configs = [
+        SELECT Field_API_Name__c
+        FROM Duplicate_Viewer_Config__c
+        WHERE Object_Type__c = :objectType AND Show_In_Preview__c = TRUE
+        ORDER BY Sort_Order__c ASC
+      ];
+
+      for (Duplicate_Viewer_Config__c config : configs) {
+        fields.add(config.Field_API_Name__c);
+      }
+    } catch (Exception e) {
+      System.debug(
+        LoggingLevel.WARN,
+        'Error querying Duplicate_Viewer_Config__c: ' + e.getMessage()
+      );
+    }
+
+    return fields;
   }
 
   /**
@@ -368,6 +481,274 @@ public with sharing class DuplicateViewerController {
     }
 
     return matchingSetIds;
+  }
+
+  /**
+   * @description Finds duplicate sets containing records that match filter criteria.
+   * @param objectType The object type to filter
+   * @param filterCriteria JSON array of {field, value} objects
+   * @return Set of DuplicateRecordSet IDs that match all filter criteria
+   */
+  private static Set<Id> findSetsMatchingFilters(
+    String objectType,
+    String filterCriteria
+  ) {
+    Set<Id> matchingSetIds = new Set<Id>();
+
+    try {
+      List<FilterCriterion> criteria = (List<FilterCriterion>) JSON.deserialize(
+        filterCriteria,
+        List<FilterCriterion>.class
+      );
+
+      if (criteria.isEmpty()) {
+        return matchingSetIds;
+      }
+
+      // Validate filter fields against configured filter fields
+      Set<String> allowedFilterFields = new Set<String>();
+      List<Duplicate_Viewer_Config__c> filterConfigs = [
+        SELECT Field_API_Name__c
+        FROM Duplicate_Viewer_Config__c
+        WHERE Object_Type__c = :objectType AND Show_As_Filter__c = TRUE
+      ];
+      for (Duplicate_Viewer_Config__c fc : filterConfigs) {
+        allowedFilterFields.add(fc.Field_API_Name__c.toLowerCase());
+      }
+
+      // Validate field accessibility
+      Schema.SObjectType sObjType = Schema.getGlobalDescribe().get(objectType);
+      if (sObjType == null) {
+        return matchingSetIds;
+      }
+      Map<String, Schema.SObjectField> fieldMap = sObjType.getDescribe()
+        .fields.getMap();
+
+      // Build WHERE clause for matching records
+      List<String> filterClauses = new List<String>();
+      List<String> queryFields = new List<String>{ 'Id' };
+
+      for (FilterCriterion criterion : criteria) {
+        if (
+          String.isBlank(criterion.field) || String.isBlank(criterion.value)
+        ) {
+          continue;
+        }
+
+        // Security: only allow configured filter fields
+        if (!allowedFilterFields.contains(criterion.field.toLowerCase())) {
+          continue;
+        }
+
+        // Verify field accessibility
+        Schema.SObjectField sField = fieldMap.get(criterion.field);
+        if (sField == null || !sField.getDescribe().isAccessible()) {
+          continue;
+        }
+
+        String escapedValue = String.escapeSingleQuotes(criterion.value);
+        filterClauses.add(criterion.field + ' = \'' + escapedValue + '\'');
+      }
+
+      if (filterClauses.isEmpty()) {
+        return matchingSetIds;
+      }
+
+      // Query matching records
+      String recordQuery =
+        'SELECT Id FROM ' +
+        String.escapeSingleQuotes(objectType) +
+        ' WHERE ' +
+        String.join(filterClauses, ' AND ') +
+        ' LIMIT 5000';
+
+      Set<Id> matchingRecordIds = new Set<Id>();
+      for (SObject record : Database.query(recordQuery)) {
+        matchingRecordIds.add(record.Id);
+      }
+
+      if (matchingRecordIds.isEmpty()) {
+        return matchingSetIds;
+      }
+
+      // Find sets containing these records
+      List<DuplicateRecordItem> items = [
+        SELECT DuplicateRecordSetId
+        FROM DuplicateRecordItem
+        WHERE RecordId IN :matchingRecordIds
+      ];
+
+      for (DuplicateRecordItem item : items) {
+        matchingSetIds.add(item.DuplicateRecordSetId);
+      }
+    } catch (Exception e) {
+      System.debug(
+        LoggingLevel.WARN,
+        'Error filtering duplicate sets: ' + e.getMessage()
+      );
+    }
+
+    return matchingSetIds;
+  }
+
+  /**
+   * @description Batch-queries sample records for all duplicate sets in a single pass.
+   *              Uses one SOQL for DuplicateRecordItems and one SOQL per objectType
+   *              instead of two SOQL per set, avoiding governor limits on large pages.
+   * @param wrappers List of DuplicateSetWrapper to get samples for
+   * @param previewFieldCache Cache of preview fields keyed by objectType:ruleId
+   * @param fieldMapsByObject Cache of field describes per object type
+   * @param sampleSize Number of sample records per set
+   * @return Map of set ID to list of RecordPreview
+   */
+  private static Map<Id, List<RecordPreview>> getBatchSampleRecords(
+    List<DuplicateSetWrapper> wrappers,
+    Map<String, List<String>> previewFieldCache,
+    Map<String, Map<String, Schema.SObjectField>> fieldMapsByObject,
+    Integer sampleSize
+  ) {
+    Map<Id, List<RecordPreview>> resultMap = new Map<Id, List<RecordPreview>>();
+
+    // Collect all set IDs that need samples
+    Set<Id> allSetIds = new Set<Id>();
+    for (DuplicateSetWrapper w : wrappers) {
+      if (w.previewFields != null && !w.previewFields.isEmpty()) {
+        allSetIds.add(w.id);
+      }
+    }
+
+    if (allSetIds.isEmpty()) {
+      return resultMap;
+    }
+
+    // Query ALL DuplicateRecordItems for all sets in ONE query
+    List<DuplicateRecordItem> allItems = [
+      SELECT Id, RecordId, DuplicateRecordSetId
+      FROM DuplicateRecordItem
+      WHERE DuplicateRecordSetId IN :allSetIds
+      ORDER BY DuplicateRecordSetId, CreatedDate ASC
+    ];
+
+    // Group items by set, limiting to sampleSize per set
+    Map<Id, List<Id>> recordIdsBySet = new Map<Id, List<Id>>();
+    // Track objectType per recordId for batched record queries
+    Map<Id, String> setObjectType = new Map<Id, String>();
+    for (DuplicateSetWrapper w : wrappers) {
+      if (w.previewFields != null && !w.previewFields.isEmpty()) {
+        setObjectType.put(w.id, w.objectType);
+      }
+    }
+
+    // Group record IDs by objectType for batched queries
+    Map<String, Set<Id>> recordIdsByObjectType = new Map<String, Set<Id>>();
+    Map<Id, Id> recordToSetId = new Map<Id, Id>();
+
+    for (DuplicateRecordItem item : allItems) {
+      Id setId = item.DuplicateRecordSetId;
+      if (!recordIdsBySet.containsKey(setId)) {
+        recordIdsBySet.put(setId, new List<Id>());
+      }
+      List<Id> setRecordIds = recordIdsBySet.get(setId);
+      if (setRecordIds.size() < sampleSize) {
+        setRecordIds.add(item.RecordId);
+        recordToSetId.put(item.RecordId, setId);
+
+        String objType = setObjectType.get(setId);
+        if (objType != null) {
+          if (!recordIdsByObjectType.containsKey(objType)) {
+            recordIdsByObjectType.put(objType, new Set<Id>());
+          }
+          recordIdsByObjectType.get(objType).add(item.RecordId);
+        }
+      }
+    }
+
+    // Execute ONE dynamic SOQL per objectType to fetch records with preview fields
+    Map<Id, SObject> allRecordsMap = new Map<Id, SObject>();
+
+    for (String objType : recordIdsByObjectType.keySet()) {
+      Set<Id> recordIds = recordIdsByObjectType.get(objType);
+      if (recordIds.isEmpty()) {
+        continue;
+      }
+
+      // Collect all preview fields needed for this objectType
+      Set<String> allFieldsForType = new Set<String>{ 'Id', 'Name' };
+      Map<String, Schema.SObjectField> fieldMap = fieldMapsByObject.get(
+        objType
+      );
+
+      for (String cacheKey : previewFieldCache.keySet()) {
+        if (cacheKey.startsWith(objType + ':')) {
+          List<String> fields = previewFieldCache.get(cacheKey);
+          for (String fieldName : fields) {
+            if (fieldMap != null) {
+              Schema.SObjectField field = fieldMap.get(fieldName);
+              if (field != null && field.getDescribe().isAccessible()) {
+                allFieldsForType.add(fieldName);
+              }
+            }
+          }
+        }
+      }
+
+      try {
+        String query =
+          'SELECT ' +
+          String.join(new List<String>(allFieldsForType), ', ') +
+          ' FROM ' +
+          String.escapeSingleQuotes(objType) +
+          ' WHERE Id IN :recordIds';
+        List<SObject> records = Database.query(query);
+        for (SObject rec : records) {
+          allRecordsMap.put(rec.Id, rec);
+        }
+      } catch (Exception e) {
+        System.debug(
+          'Error batch-querying ' + objType + ' records: ' + e.getMessage()
+        );
+      }
+    }
+
+    // Build RecordPreview objects grouped by set
+    for (DuplicateSetWrapper w : wrappers) {
+      if (w.previewFields == null || w.previewFields.isEmpty()) {
+        continue;
+      }
+
+      List<RecordPreview> previews = new List<RecordPreview>();
+      List<Id> setRecordIds = recordIdsBySet.get(w.id);
+      if (setRecordIds == null) {
+        resultMap.put(w.id, previews);
+        continue;
+      }
+
+      for (Id recordId : setRecordIds) {
+        SObject record = allRecordsMap.get(recordId);
+        if (record == null) {
+          continue;
+        }
+
+        RecordPreview preview = new RecordPreview();
+        preview.recordId = record.Id;
+        preview.recordName = (String) record.get('Name');
+        preview.fieldValues = new Map<String, Object>();
+
+        for (String fieldName : w.previewFields) {
+          try {
+            preview.fieldValues.put(fieldName, record.get(fieldName));
+          } catch (Exception e) {
+            // Field not accessible or not in query
+          }
+        }
+
+        previews.add(preview);
+      }
+
+      resultMap.put(w.id, previews);
+    }
+
+    return resultMap;
   }
 
   /**
@@ -946,11 +1327,31 @@ public with sharing class DuplicateViewerController {
       ];
 
       summary.setsByObject = new List<ObjectCount>();
+      Map<String, ObjectCount> objectCountMap = new Map<String, ObjectCount>();
       for (AggregateResult ar : byObject) {
         ObjectCount oc = new ObjectCount();
         oc.objectType = (String) ar.get('objType');
         oc.count = (Integer) ar.get('cnt');
+        oc.itemCount = 0;
         summary.setsByObject.add(oc);
+        objectCountMap.put(oc.objectType, oc);
+      }
+
+      // Items by object type
+      List<AggregateResult> itemsByObject = [
+        SELECT
+          DuplicateRecordSet.DuplicateRule.SobjectType objType,
+          COUNT(Id) cnt
+        FROM DuplicateRecordItem
+        GROUP BY DuplicateRecordSet.DuplicateRule.SobjectType
+      ];
+
+      for (AggregateResult ar : itemsByObject) {
+        String objType = (String) ar.get('objType');
+        Integer cnt = (Integer) ar.get('cnt');
+        if (objectCountMap.containsKey(objType)) {
+          objectCountMap.get(objType).itemCount = cnt;
+        }
       }
 
       return summary;
@@ -1035,6 +1436,8 @@ public with sharing class DuplicateViewerController {
     public String objectType;
     @AuraEnabled
     public Integer count;
+    @AuraEnabled
+    public Integer itemCount;
   }
 
   public class JobStatusWrapper {
@@ -1064,6 +1467,24 @@ public with sharing class DuplicateViewerController {
     public Boolean isSuccess;
   }
 
+  public class FilterFieldConfig {
+    @AuraEnabled
+    public String fieldApiName;
+    @AuraEnabled
+    public String fieldLabel;
+    @AuraEnabled
+    public String fieldType;
+    @AuraEnabled
+    public List<String> picklistValues;
+  }
+
+  public class FilterCriterion {
+    @AuraEnabled
+    public String field;
+    @AuraEnabled
+    public String value;
+  }
+
   public class RecordPreview {
     @AuraEnabled
     public Id recordId;
@@ -1073,6 +1494,81 @@ public with sharing class DuplicateViewerController {
     public Map<String, Object> fieldValues;
     @AuraEnabled
     public Map<String, List<String>> allValues; // field -> [value1, value2, ...] for diff display
+  }
+
+  // =====================================================================
+  // FILTER METHODS
+  // =====================================================================
+
+  /**
+   * @description Gets the filter field configuration for a given object type.
+   * @param objectType The SObject API name
+   * @return List of FilterFieldConfig with field metadata for filters
+   */
+  @AuraEnabled
+  public static List<FilterFieldConfig> getFilterFields(String objectType) {
+    List<FilterFieldConfig> filterFields = new List<FilterFieldConfig>();
+
+    if (String.isBlank(objectType) || objectType == 'All') {
+      return filterFields;
+    }
+
+    try {
+      List<Duplicate_Viewer_Config__c> configs = [
+        SELECT Field_API_Name__c
+        FROM Duplicate_Viewer_Config__c
+        WHERE Object_Type__c = :objectType AND Show_As_Filter__c = TRUE
+        ORDER BY Sort_Order__c ASC
+      ];
+
+      if (configs.isEmpty()) {
+        return filterFields;
+      }
+
+      // Get field describes for metadata
+      Schema.SObjectType sObjType = Schema.getGlobalDescribe().get(objectType);
+      if (sObjType == null) {
+        return filterFields;
+      }
+
+      Map<String, Schema.SObjectField> fieldMap = sObjType.getDescribe()
+        .fields.getMap();
+
+      for (Duplicate_Viewer_Config__c config : configs) {
+        Schema.SObjectField field = fieldMap.get(config.Field_API_Name__c);
+        if (field == null || !field.getDescribe().isAccessible()) {
+          continue;
+        }
+
+        Schema.DescribeFieldResult fieldDescribe = field.getDescribe();
+        FilterFieldConfig ffc = new FilterFieldConfig();
+        ffc.fieldApiName = fieldDescribe.getName();
+        ffc.fieldLabel = fieldDescribe.getLabel();
+        ffc.fieldType = String.valueOf(fieldDescribe.getType());
+
+        // Get picklist values if applicable
+        if (
+          fieldDescribe.getType() == Schema.DisplayType.PICKLIST ||
+          fieldDescribe.getType() == Schema.DisplayType.MULTIPICKLIST
+        ) {
+          ffc.picklistValues = new List<String>();
+          for (Schema.PicklistEntry entry : fieldDescribe.getPicklistValues()) {
+            if (entry.isActive()) {
+              ffc.picklistValues.add(entry.getValue());
+            }
+          }
+        }
+
+        filterFields.add(ffc);
+      }
+    } catch (Exception e) {
+      System.debug(
+        LoggingLevel.WARN,
+        'Error getting filter fields: ' + e.getMessage()
+      );
+    }
+
+    return filterFields;
   }
 
   // =====================================================================
