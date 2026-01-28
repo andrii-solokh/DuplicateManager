@@ -2243,4 +2243,117 @@ private class DuplicateMergeControllerTest {
       'String should be returned as-is'
     );
   }
+
+  // =====================================================================
+  // REGRESSION TEST: EMPTY VS NON-EMPTY VALUES
+  // =====================================================================
+
+  @IsTest
+  static void testComparisonEmptyVsNonEmptyValueShowsAsDifferent() {
+    // Regression test: When one record has an empty value and another has a
+    // non-empty value, the field should be marked as hasDifference=true,
+    // not allSame=true. Previously, this was incorrectly showing under "Same".
+
+    // Create two contacts: one with Phone, one without
+    Contact contactWithPhone = new Contact(
+      FirstName = 'WithPhone',
+      LastName = 'EmptyTest',
+      Email = 'withphone@emptytest.com',
+      Phone = '555-1234'
+    );
+    Contact contactWithoutPhone = new Contact(
+      FirstName = 'WithoutPhone',
+      LastName = 'EmptyTest',
+      Email = 'withoutphone@emptytest.com',
+      Phone = null
+    );
+
+    Database.DMLOptions dmlOptions = new Database.DMLOptions();
+    dmlOptions.DuplicateRuleHeader.allowSave = true;
+    List<Database.SaveResult> saveResults = Database.insert(
+      new List<Contact>{ contactWithPhone, contactWithoutPhone },
+      dmlOptions
+    );
+
+    if (
+      !saveResults[0].isSuccess() ||
+      !saveResults[1].isSuccess() ||
+      contactWithPhone.Id == null ||
+      contactWithoutPhone.Id == null
+    ) {
+      System.assert(true, 'Contact insert failed - skipping test');
+      return;
+    }
+
+    List<DuplicateRule> rules = [
+      SELECT Id
+      FROM DuplicateRule
+      WHERE SobjectType = 'Contact' AND IsActive = TRUE
+      LIMIT 1
+    ];
+
+    if (rules.isEmpty()) {
+      System.assert(true, 'No active Contact duplicate rule - skipping test');
+      return;
+    }
+
+    DuplicateRecordSet drs = new DuplicateRecordSet();
+    drs.DuplicateRuleId = rules[0].Id;
+    insert drs;
+
+    List<DuplicateRecordItem> items = new List<DuplicateRecordItem>();
+    DuplicateRecordItem item1 = new DuplicateRecordItem();
+    item1.DuplicateRecordSetId = drs.Id;
+    item1.RecordId = contactWithPhone.Id;
+    items.add(item1);
+
+    DuplicateRecordItem item2 = new DuplicateRecordItem();
+    item2.DuplicateRecordSetId = drs.Id;
+    item2.RecordId = contactWithoutPhone.Id;
+    items.add(item2);
+    insert items;
+
+    Test.startTest();
+    DuplicateMergeController.ComparisonResult result = DuplicateMergeController.getRecordComparison(
+      drs.Id
+    );
+    Test.stopTest();
+
+    System.assertNotEquals(null, result, 'Result should not be null');
+
+    // Find the Phone field in the comparison results
+    DuplicateMergeController.FieldComparison phoneField = null;
+    for (DuplicateMergeController.FieldComparison fc : result.fields) {
+      if (fc.apiName.equalsIgnoreCase('Phone')) {
+        phoneField = fc;
+        break;
+      }
+    }
+
+    System.assertNotEquals(
+      null,
+      phoneField,
+      'Phone field should be in comparison results'
+    );
+
+    // CRITICAL ASSERTION: Empty vs non-empty should be marked as different
+    System.assertEquals(
+      true,
+      phoneField.hasDifference,
+      'Phone field should have hasDifference=true when one record has value and other is empty'
+    );
+    System.assertEquals(
+      false,
+      phoneField.allSame,
+      'Phone field should have allSame=false when one record has value and other is empty'
+    );
+    System.assertEquals(
+      false,
+      phoneField.allEmpty,
+      'Phone field should have allEmpty=false when at least one record has a value'
+    );
+
+    // Cleanup
+    delete drs;
+  }
 }

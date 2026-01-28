@@ -127,6 +127,7 @@ public with sharing class DuplicateMergeController {
 
         Set<String> uniqueValues = new Set<String>();
         Boolean hasNonEmptyValue = false;
+        Boolean hasEmptyValue = false;
 
         for (SObject record : records) {
           Object fieldValue = record.get(fieldName);
@@ -144,13 +145,17 @@ public with sharing class DuplicateMergeController {
           if (!fv.isEmpty) {
             hasNonEmptyValue = true;
             uniqueValues.add(displayValue);
+          } else {
+            hasEmptyValue = true;
           }
         }
 
         // Determine field status
         fc.allEmpty = !hasNonEmptyValue;
-        fc.allSame = uniqueValues.size() <= 1;
-        fc.hasDifference = uniqueValues.size() > 1;
+        // Mixed empty/non-empty values count as a difference
+        Boolean hasMixedEmptiness = hasEmptyValue && hasNonEmptyValue;
+        fc.hasDifference = uniqueValues.size() > 1 || hasMixedEmptiness;
+        fc.allSame = !fc.allEmpty && !fc.hasDifference;
 
         result.fields.add(fc);
       }
