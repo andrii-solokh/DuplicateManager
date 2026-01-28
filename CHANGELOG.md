@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0](https://github.com/andrii-solokh/DuplicateManager/compare/DuplicateManager-v1.4.0...DuplicateManager-v1.5.0) (2026-01-28)
+
+
+### Features
+
+* **ui:** add field config settings modal, compact summary cards, and UI polish ([e513279](https://github.com/andrii-solokh/DuplicateManager/commit/e5132799b415ab4617de97728ca9675b493a633f))
+* **ui:** replace object picklist with search box, extract pagination, and improve settings UX ([73c0180](https://github.com/andrii-solokh/DuplicateManager/commit/73c0180c9b6edf43a0b3c70a5db5d2bc2ad5a1f0))
+
+
+### Bug Fixes
+
+* **ui:** improve empty state display and search/filter behavior ([13b6ca7](https://github.com/andrii-solokh/DuplicateManager/commit/13b6ca7ad1536adde70e00085d6d9f0b50f72a92))
+
 ## [1.4.0](https://github.com/andrii-solokh/DuplicateManager/compare/DuplicateManager-v1.3.0...DuplicateManager-v1.4.0) (2026-01-21)
 
 ### Features
