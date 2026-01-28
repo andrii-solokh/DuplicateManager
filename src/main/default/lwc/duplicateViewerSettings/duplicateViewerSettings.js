@@ -50,6 +50,12 @@ export default class DuplicateViewerSettings extends LightningElement {
           label: opt.label,
           value: opt.value
         }));
+
+      // Auto-select the first object
+      if (this.objectTypeOptions.length > 0) {
+        this.selectedObjectType = this.objectTypeOptions[0].value;
+        await this.loadFieldData();
+      }
     } catch (err) {
       this.showToast("Error", this.extractErrorMessage(err), "error");
     }

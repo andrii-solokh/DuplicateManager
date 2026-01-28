@@ -19,6 +19,7 @@
         <lightning-button-icon
           icon-name="utility:settings"
           variant="bare-inverse"
+          size="large"
           alternative-text="Field configuration"
           onclick={handleOpenSettings}
           class="header-settings-btn"
@@ -108,17 +109,25 @@
     <section class="controls-section">
       <div class="controls-row">
         <div class="filter-group">
-          <lightning-combobox
-            name="objectFilter"
-            label="Filter by Object"
-            value={selectedObjectType}
-            placeholder="Select Object Type"
-            options={objectTypeOptions}
-            onchange={handleObjectTypeChange}
+          <lightning-input
+            type="search"
+            name="search"
+            label="Search records"
+            placeholder="Search by name, email, or any field..."
+            value={searchTerm}
+            onchange={handleSearchChange}
             variant="label-hidden"
-            class="filter-combo"
+            class="search-input"
           >
-          </lightning-combobox>
+          </lightning-input>
+        </div>
+        <div class="controls-stats">
+          <span class="stat-item total"
+            >Showing&nbsp;<strong>{displayedCount}</strong>&nbsp;of&nbsp;<strong>{totalCount}</strong>&nbsp;sets</span
+          >
+          <template if:true={showSearchResults}>
+            <span class="search-results-message">{searchResultsMessage}</span>
+          </template>
         </div>
         <div class="action-group">
           <lightning-button
@@ -337,58 +346,44 @@
     <!-- Duplicate Sets List -->
     <template if:true={showDuplicatesSection}>
       <section class="duplicates-section slds-is-relative">
-        <div class="section-header">
-          <lightning-input
-            type="search"
-            name="search"
-            label="Search records"
-            placeholder="Search by name, email, or any field..."
-            value={searchTerm}
-            onchange={handleSearchChange}
-            variant="label-hidden"
-            class="search-input"
-          >
-          </lightning-input>
-          <span class="stat-item total"
-            >Showing&nbsp;<strong>{displayedCount}</strong>&nbsp;of&nbsp;<strong>{totalCount}</strong>&nbsp;sets</span
-          >
-          <template if:true={showSearchResults}>
-            <span class="search-results-message">{searchResultsMessage}</span>
-          </template>
-        </div>
-
-        <!-- Top Pagination -->
         <template if:true={showPagination}>
-          <div class="pagination pagination-top">
-            <lightning-button
-              label="Previous"
-              icon-name="utility:chevronleft"
-              onclick={handlePrevPage}
-              disabled={isPrevDisabled}
-              class="page-btn"
-            >
-            </lightning-button>
-            <span class="page-info">Page {currentPage} of {totalPages}</span>
-            <lightning-button
-              label="Next"
-              icon-name="utility:chevronright"
-              icon-position="right"
-              onclick={handleNextPage}
-              disabled={isNextDisabled}
-              class="page-btn"
-            >
-            </lightning-button>
-            <div class="page-size-selector">
-              <lightning-combobox
-                name="pageSize"
-                label="Per page"
-                value={currentPageSizeString}
-                options={pageSizeOptions}
-                onchange={handlePageSizeChange}
-                variant="label-inline"
-                class="page-size-combo"
+          <div class="section-header">
+            <div class="section-header-pagination">
+              <lightning-button
+                label="Previous"
+                icon-name="utility:chevronleft"
+                onclick={handlePrevPage}
+                disabled={isPrevDisabled}
+                class="page-btn"
               >
-              </lightning-combobox>
+              </lightning-button>
+              <span class="page-info">Page {currentPage} of {totalPages}</span>
+              <lightning-button
+                label="Next"
+                icon-name="utility:chevronright"
+                icon-position="right"
+                onclick={handleNextPage}
+                disabled={isNextDisabled}
+                class="page-btn"
+              >
+              </lightning-button>
+            </div>
+            <div class="section-header-pagesize">
+              <span class="pagesize-label">Per page</span>
+              <select
+                class="page-size-select"
+                onchange={handlePageSizeSelectChange}
+              >
+                <template for:each={pageSizeOptionsWithSelected} for:item="opt">
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    selected={opt.selected}
+                  >
+                    {opt.label}
+                  </option>
+                </template>
+              </select>
             </div>
           </div>
         </template>
@@ -534,42 +529,45 @@
             </template>
           </div>
         </template>
+      </section>
+    </template>
 
-        <!-- Bottom Pagination -->
-        <template if:true={showPagination}>
-          <div class="pagination pagination-bottom">
-            <lightning-button
-              label="Previous"
-              icon-name="utility:chevronleft"
-              onclick={handlePrevPage}
-              disabled={isPrevDisabled}
-              class="page-btn"
-            >
-            </lightning-button>
-            <span class="page-info">Page {currentPage} of {totalPages}</span>
-            <lightning-button
-              label="Next"
-              icon-name="utility:chevronright"
-              icon-position="right"
-              onclick={handleNextPage}
-              disabled={isNextDisabled}
-              class="page-btn"
-            >
-            </lightning-button>
-            <div class="page-size-selector page-size-flip">
-              <lightning-combobox
-                name="pageSizeBottom"
-                label="Per page"
-                value={currentPageSizeString}
-                options={pageSizeOptions}
-                onchange={handlePageSizeChange}
-                variant="label-inline"
-                class="page-size-combo"
-              >
-              </lightning-combobox>
-            </div>
-          </div>
-        </template>
+    <!-- Bottom Pagination -->
+    <template if:true={showBottomPagination}>
+      <section class="pagination-section">
+        <div class="pagination-center">
+          <lightning-button
+            label="Previous"
+            icon-name="utility:chevronleft"
+            onclick={handlePrevPage}
+            disabled={isPrevDisabled}
+            class="page-btn"
+          >
+          </lightning-button>
+          <span class="page-info">Page {currentPage} of {totalPages}</span>
+          <lightning-button
+            label="Next"
+            icon-name="utility:chevronright"
+            icon-position="right"
+            onclick={handleNextPage}
+            disabled={isNextDisabled}
+            class="page-btn"
+          >
+          </lightning-button>
+        </div>
+        <div class="pagination-pagesize-center">
+          <span class="pagesize-label">Per page</span>
+          <select
+            class="page-size-select"
+            onchange={handlePageSizeSelectChange}
+          >
+            <template for:each={pageSizeOptionsWithSelected} for:item="opt">
+              <option key={opt.value} value={opt.value} selected={opt.selected}>
+                {opt.label}
+              </option>
+            </template>
+          </select>
+        </div>
       </section>
     </template>
   </div>

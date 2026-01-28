@@ -98,7 +98,7 @@ describe("c-duplicate-viewer-settings", () => {
     expect(getObjectTypeOptions).toHaveBeenCalled();
   });
 
-  it("shows placeholder when no object selected", async () => {
+  it("auto-selects the first object on load", async () => {
     const element = createElement("c-duplicate-viewer-settings", {
       is: DuplicateViewerSettings
     });
@@ -106,10 +106,13 @@ describe("c-duplicate-viewer-settings", () => {
 
     await flushPromises();
 
+    // First object should be auto-selected, so field data should load
+    expect(getAvailableFields).toHaveBeenCalled();
+    // Placeholder should not be shown
     const placeholder = element.shadowRoot.querySelector(
       ".settings-placeholder"
     );
-    expect(placeholder).not.toBeNull();
+    expect(placeholder).toBeNull();
   });
 
   it("loads fields when object type is selected from sidebar", async () => {

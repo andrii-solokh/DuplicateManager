@@ -397,6 +397,15 @@ export default class DuplicateViewer extends LightningElement {
     }));
   }
 
+  get pageSizeOptionsWithSelected() {
+    const current = String(this._effectivePageSize);
+    return [
+      { label: "12", value: "12", selected: current === "12" },
+      { label: "24", value: "24", selected: current === "24" },
+      { label: "48", value: "48", selected: current === "48" }
+    ];
+  }
+
   get pageSizeOptions() {
     return [
       { label: "12", value: "12" },
@@ -442,6 +451,10 @@ export default class DuplicateViewer extends LightningElement {
 
   get showPagination() {
     return this.totalPages > 1;
+  }
+
+  get showBottomPagination() {
+    return this.showDuplicatesSection && this.showPagination;
   }
 
   get isPrevDisabled() {
@@ -519,6 +532,13 @@ export default class DuplicateViewer extends LightningElement {
 
   handlePageSizeChange(event) {
     this._effectivePageSize = parseInt(event.detail.value, 10);
+    this.currentPage = 1;
+    this.isLoading = true;
+    this.loadAllData();
+  }
+
+  handlePageSizeSelectChange(event) {
+    this._effectivePageSize = parseInt(event.target.value, 10);
     this.currentPage = 1;
     this.isLoading = true;
     this.loadAllData();

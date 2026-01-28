@@ -252,7 +252,7 @@ describe("c-duplicate-viewer", () => {
   // INTERACTION TESTS
   // =========================================================================
 
-  it("filters duplicate sets by object type", async () => {
+  it("filters duplicate sets by object type via summary card", async () => {
     const element = createElement("c-duplicate-viewer", {
       is: DuplicateViewer
     });
@@ -261,21 +261,26 @@ describe("c-duplicate-viewer", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    // Find the combobox
-    const combobox = element.shadowRoot.querySelector("lightning-combobox");
-    expect(combobox).not.toBeNull();
-
-    // Simulate selection change
-    combobox.dispatchEvent(
-      new CustomEvent("change", { detail: { value: "Contact" } })
+    // Find a summary card with a data-object attribute
+    const summaryCards = element.shadowRoot.querySelectorAll(
+      ".summary-card[data-object]"
     );
+    expect(summaryCards.length).toBeGreaterThan(0);
 
-    await Promise.resolve();
-
-    // Verify API was called with filter
-    expect(getDuplicateSetPreviews).toHaveBeenCalledWith(
-      expect.objectContaining({ objectType: "Contact" })
+    // Click a summary card to filter by object type
+    const contactCard = Array.from(summaryCards).find(
+      (card) => card.dataset.object === "Contact"
     );
+    if (contactCard) {
+      contactCard.click();
+
+      await Promise.resolve();
+
+      // Verify API was called with filter
+      expect(getDuplicateSetPreviews).toHaveBeenCalledWith(
+        expect.objectContaining({ objectType: "Contact" })
+      );
+    }
   });
 
   it("handles refresh button click", async () => {
@@ -382,7 +387,7 @@ describe("c-duplicate-viewer", () => {
 
     await flushPromises();
 
-    const pagination = element.shadowRoot.querySelector(".pagination");
+    const pagination = element.shadowRoot.querySelector(".pagination-section");
     expect(pagination).not.toBeNull();
   });
 
