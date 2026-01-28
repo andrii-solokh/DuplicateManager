@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1](https://github.com/andrii-solokh/DuplicateManager/compare/DuplicateManager-v1.5.0...DuplicateManager-v1.5.1) (2026-01-28)
+
+
+### Bug Fixes
+
+* **ci:** correct JSON field name for package version extraction ([3c4e564](https://github.com/andrii-solokh/DuplicateManager/commit/3c4e564195e7b67c7e7b497706e39d0f7131e1b0))
+* **merge:** treat empty vs non-empty field values as different ([117f61a](https://github.com/andrii-solokh/DuplicateManager/commit/117f61af6c26de5c8cd05d89702a6820bc9cf326))
+
 ## [1.5.0](https://github.com/andrii-solokh/DuplicateManager/compare/DuplicateManager-v1.4.0...DuplicateManager-v1.5.0) (2026-01-28)
 
 
