@@ -104,7 +104,7 @@ jobs:
           fi
 
           VERSION_ID=$(echo $VERSION_OUTPUT | jq -r '.result.SubscriberPackageVersionId')
-          VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.Version')
+          VERSION_NUMBER=$(echo $VERSION_OUTPUT | jq -r '.result.VersionNumber')
 
           echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
