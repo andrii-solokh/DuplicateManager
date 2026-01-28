@@ -22,6 +22,28 @@
   --sds-c-icon-color-foreground-default: white;
 }
 
+/* Modal Container Sizing */
+.settings-modal-container {
+  max-width: 1200px;
+  width: 95vw;
+  max-height: 95vh;
+}
+
+/* Override SLDS modal constraints */
+.slds-modal {
+  padding: 0 !important;
+}
+
+.slds-modal__container {
+  margin: 0 auto !important;
+  padding: 2rem 1rem 1rem 1rem !important;
+}
+
+.slds-modal__content {
+  max-height: none !important;
+  height: auto !important;
+}
+
 /* Content */
 .settings-content {
   padding: 0;

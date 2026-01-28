@@ -439,6 +439,7 @@
 
 /* Duplicates Section */
 .duplicates-section {
+  position: relative;
   background: var(--color-bg-card);
   border-radius: var(--radius-md);
   padding: 24px;
@@ -536,7 +537,7 @@
 /* Grid Loading Overlay */
 .grid-loading-overlay {
   position: absolute;
-  top: 60px;
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
@@ -545,7 +546,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  border-radius: var(--radius-md);
 }
 
 /* Duplicate Sets Grid */

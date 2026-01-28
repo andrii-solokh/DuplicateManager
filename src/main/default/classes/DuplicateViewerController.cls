@@ -426,7 +426,7 @@ public with sharing class DuplicateViewerController {
 
   /**
    * @description Finds duplicate sets containing records that match the search term.
-   * @param searchTerm The search term to match against record names
+   * @param searchTerm The search term to match against record names and preview fields
    * @param objectType Optional object type filter
    * @return Set of DuplicateRecordSet IDs that contain matching records
    */
@@ -452,10 +452,47 @@ public with sharing class DuplicateViewerController {
     Set<Id> matchingRecordIds = new Set<Id>();
     for (String objType : objectsToSearch) {
       try {
+        // Build WHERE clause including Name and preview fields
+        List<String> conditions = new List<String>{
+          'Name LIKE :searchPattern'
+        };
+        List<String> configuredFields = getConfiguredPreviewFields(objType);
+        List<String> previewFields = configuredFields.isEmpty()
+          ? getDefaultPreviewFields(objType)
+          : configuredFields;
+        // Only include string-compatible fields (LIKE works on these types)
+        Set<Schema.DisplayType> textTypes = new Set<Schema.DisplayType>{
+          Schema.DisplayType.STRING,
+          Schema.DisplayType.EMAIL,
+          Schema.DisplayType.PHONE,
+          Schema.DisplayType.URL,
+          Schema.DisplayType.TEXTAREA,
+          Schema.DisplayType.PICKLIST
+        };
+        Map<String, Schema.SObjectField> fieldMap = Schema.getGlobalDescribe()
+          .get(objType)
+          .getDescribe()
+          .fields.getMap();
+        Set<String> addedFields = new Set<String>();
+        for (String field : previewFields) {
+          String fieldLower = field.toLowerCase();
+          if (!addedFields.contains(fieldLower) && fieldLower != 'name') {
+            Schema.SObjectField sField = fieldMap.get(fieldLower);
+            if (
+              sField != null &&
+              textTypes.contains(sField.getDescribe().getType())
+            ) {
+              addedFields.add(fieldLower);
+              conditions.add(field + ' LIKE :searchPattern');
+            }
+          }
+        }
         String recordQuery =
           'SELECT Id FROM ' +
           objType +
-          ' WHERE Name LIKE :searchPattern LIMIT 1000';
+          ' WHERE ' +
+          String.join(conditions, ' OR ') +
+          ' LIMIT 1000';
         for (SObject record : Database.query(recordQuery)) {
           matchingRecordIds.add(record.Id);
         }
@@ -547,7 +584,7 @@ public with sharing class DuplicateViewerController {
         }
 
         String escapedValue = String.escapeSingleQuotes(criterion.value);
-        filterClauses.add(criterion.field + ' = \'' + escapedValue + '\'');
+        filterClauses.add(criterion.field + ' LIKE \'%' + escapedValue + '%\'');
       }
 
       if (filterClauses.isEmpty()) {

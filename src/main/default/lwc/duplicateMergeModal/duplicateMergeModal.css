@@ -119,6 +119,7 @@
   text-align: center;
   background: white;
   min-height: 300px;
+  flex: 1;
 }
 
 .success-icon-wrapper {

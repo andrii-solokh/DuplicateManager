@@ -423,7 +423,8 @@ export default class DuplicateViewer extends LightningElement {
       !this.isLoading &&
       !this.error &&
       this.duplicateSets.length === 0 &&
-      !this.searchTerm
+      !this.searchTerm &&
+      !this.hasActiveFilters
     );
   }
 
@@ -432,7 +433,7 @@ export default class DuplicateViewer extends LightningElement {
   }
 
   get showGridContent() {
-    return !this.isLoading && this.duplicateSets.length > 0;
+    return this.duplicateSets.length > 0;
   }
 
   get showGridLoading() {
@@ -441,8 +442,20 @@ export default class DuplicateViewer extends LightningElement {
 
   get showNoSearchResults() {
     return (
-      !this.isLoading && this.searchTerm && this.duplicateSets.length === 0
+      !this.isLoading &&
+      (this.searchTerm || this.hasActiveFilters) &&
+      this.duplicateSets.length === 0
     );
+  }
+
+  get noResultsMessage() {
+    if (this.searchTerm && this.hasActiveFilters) {
+      return `No duplicate sets match your search "${this.searchTerm}" and filters`;
+    }
+    if (this.searchTerm) {
+      return `No duplicate sets match your search "${this.searchTerm}"`;
+    }
+    return "No duplicate sets match your filters";
   }
 
   get totalPages() {
@@ -603,6 +616,9 @@ export default class DuplicateViewer extends LightningElement {
 
   handleClearFilters() {
     this.activeFilters = {};
+    this.template.querySelectorAll(".filter-input").forEach((input) => {
+      input.value = "";
+    });
     this.currentPage = 1;
     this.isLoading = true;
     this.loadAllData();
@@ -630,6 +646,7 @@ export default class DuplicateViewer extends LightningElement {
       this.selectedObjectType = objectType;
       this.currentPage = 1;
       this.isLoading = true;
+      this.loadFilterFields();
       this.loadAllData();
     }
   }
