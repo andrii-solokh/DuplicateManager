@@ -1,0 +1,16 @@
+title: Salesforce Duplicate Manager
+description: Open-source Salesforce duplicate management app for finding, reviewing, and merging duplicate records with Apex and Lightning Web Components.
+url: https://andrii-solokh.github.io
+baseurl: /DuplicateManager
+lang: en_US
+author:
+  name: Andrii Solokh
+  url: https://github.com/andrii-solokh
+repository: andrii-solokh/DuplicateManager
+license: MIT
+logo: /DuplicateManager/images/home.png
+social:
+  links:
+    - https://github.com/andrii-solokh/DuplicateManager
+exclude:
+  - plans/

@@ -1,3 +1,9 @@
+---
+layout: default
+title: Salesforce Duplicate Manager Usage Guide
+description: Learn how to find, review, scan, schedule, and merge duplicate Salesforce records.
+---
+
 # Usage Guide
 
 This guide explains how to use Duplicate Manager to find, review, and merge duplicate records.
@@ -60,6 +66,25 @@ To modify or cancel:
 - Click "Cancel Schedule" to disable
 
 ## Merging Duplicates
+
+### Account Record Page Merge Use Case
+
+For teams that only need Account cleanup, Duplicate Manager can be used as a focused Account merge
+workflow from an Account record page. A user starts from an account such as `Acme Demo
+Manufacturing`, reviews its detected duplicate account records, chooses the master record, and
+selects the field values to keep.
+
+Example demo data:
+
+| Field        | Master account            | Duplicate account         |
+| ------------ | ------------------------- | ------------------------- |
+| Account Name | Acme Demo Manufacturing   | Acme Demo Mfg.            |
+| Website      | https://acme-demo.example | https://acme-demo.example |
+| Phone        | (555) 010-0142            | (555) 010-0142            |
+| Billing City | Denver                    | Denver                    |
+| Industry     | Manufacturing             | Industrial Supplies       |
+
+The example values above are demo data only and do not represent any real customer or person.
 
 ### Opening the Merge Modal
 

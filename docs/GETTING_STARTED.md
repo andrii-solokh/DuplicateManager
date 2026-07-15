@@ -1,6 +1,12 @@
-# Getting Started with Duplicate Manager
+---
+layout: default
+title: Getting Started with Salesforce Duplicate Manager
+description: Install and configure Salesforce Duplicate Manager in a Salesforce org.
+---
 
-This guide will help you install and configure Duplicate Manager in your Salesforce org.
+# Getting Started with Salesforce Duplicate Manager
+
+This guide will help you install and configure Salesforce Duplicate Manager in your Salesforce org.
 
 ## Prerequisites
 
@@ -19,10 +25,10 @@ The easiest way to install is using the managed package:
 
 ```bash
 # Production or Developer org
-sf package install --package DuplicateManager@1.0.0-1 --target-org your-org-alias --wait 10
+sf package install --package 04tgK0000009cxJQAQ --target-org your-org-alias --wait 10
 
 # Sandbox
-sf package install --package DuplicateManager@1.0.0-1 --target-org your-sandbox-alias --wait 10
+sf package install --package 04tgK0000009cxJQAQ --target-org your-sandbox-alias --wait 10
 ```
 
 ### Install from Source

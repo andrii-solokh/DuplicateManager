@@ -1,11 +1,29 @@
 {
   "name": "duplicate-manager",
   "version": "1.5.1",
-  "description": "Salesforce Duplicate Management UI - Modern interface for viewing, managing, and merging duplicate records",
+  "description": "Open-source Salesforce duplicate manager for finding, reviewing, and merging duplicate records with Apex and Lightning Web Components",
+  "homepage": "https://andrii-solokh.github.io/DuplicateManager/",
+  "keywords": [
+    "salesforce",
+    "salesforce-apex",
+    "salesforce-duplicates",
+    "duplicate-manager",
+    "duplicate-management",
+    "lightning-web-components",
+    "lwc",
+    "apex",
+    "crm",
+    "data-quality",
+    "merge-records",
+    "unlocked-package"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/andrii-solokh/DuplicateManager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/andrii-solokh/DuplicateManager/issues"
   },
   "scripts": {
     "scratch:create": "sf org create scratch --definition-file config/project-scratch-def.json --set-default --wait 20",

@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      Salesforce Duplicate Manager | Open-Source LWC Duplicate Merge App
+    </title>
+    <meta
+      name="description"
+      content="Open-source Salesforce duplicate manager and unlocked package for finding, reviewing, and merging duplicate records from a dashboard or focused Account record page workflow."
+    />
+    <meta name="robots" content="index, follow" />
+    <link
+      rel="canonical"
+      href="https://andrii-solokh.github.io/DuplicateManager/"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://andrii-solokh.github.io/DuplicateManager/"
+    />
+    <meta property="og:title" content="Salesforce Duplicate Manager" />
+    <meta
+      property="og:description"
+      content="Find, review, and merge Salesforce duplicate records with an open-source Apex and Lightning Web Components app."
+    />
+    <meta
+      property="og:image"
+      content="https://andrii-solokh.github.io/DuplicateManager/images/home.png"
+    />
+    <meta
+      property="og:image:alt"
+      content="Salesforce Duplicate Manager dashboard"
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Salesforce Duplicate Manager" />
+    <meta
+      name="twitter:description"
+      content="Open-source Salesforce duplicate management app for finding, reviewing, and merging duplicate records."
+    />
+    <meta
+      name="twitter:image"
+      content="https://andrii-solokh.github.io/DuplicateManager/images/home.png"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "Salesforce Duplicate Manager",
+        "alternateName": "DuplicateManager",
+        "description": "Open-source Salesforce duplicate management app and unlocked package for finding, reviewing, and merging duplicate records from a dashboard or focused Account record page workflow.",
+        "codeRepository": "https://github.com/andrii-solokh/DuplicateManager",
+        "url": "https://andrii-solokh.github.io/DuplicateManager/",
+        "license": "https://opensource.org/licenses/MIT",
+        "programmingLanguage": ["Apex", "JavaScript", "HTML", "CSS"],
+        "runtimePlatform": "Salesforce Lightning Platform",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Salesforce",
+        "author": {
+          "@type": "Person",
+          "name": "Andrii Solokh",
+          "url": "https://github.com/andrii-solokh"
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f9fb;
+        --surface: #ffffff;
+        --text: #142033;
+        --muted: #516173;
+        --border: #d8e0e8;
+        --brand: #0176d3;
+        --brand-dark: #0b5cab;
+        --accent: #2e844a;
+        --code: #102a43;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--brand-dark);
+      }
+
+      .site-header {
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .nav {
+        display: flex;
+        max-width: 1120px;
+        min-height: 64px;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 auto;
+        padding: 0 24px;
+        gap: 24px;
+      }
+
+      .brand {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 18px;
+        font-size: 0.95rem;
+      }
+
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .nav-links a:hover,
+      .nav-links a:focus {
+        color: var(--brand-dark);
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 56px 24px 72px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 0.98fr) minmax(360px, 1.02fr);
+        gap: 44px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--accent);
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.25rem, 5vw, 4.75rem);
+        line-height: 0.96;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 58ch;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: 1.125rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 0 16px;
+        background: var(--surface);
+        color: var(--text);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .button.primary {
+        border-color: var(--brand);
+        background: var(--brand);
+        color: #ffffff;
+      }
+
+      .button:focus,
+      .button:hover {
+        border-color: var(--brand-dark);
+      }
+
+      .hero-media {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: 0 18px 48px rgb(20 32 51 / 12%);
+        overflow: hidden;
+      }
+
+      .hero-media img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .section {
+        margin-top: 72px;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: 1.55rem;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .feature {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 20px;
+      }
+
+      .feature h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+      }
+
+      .feature p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .install {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 24px;
+      }
+
+      pre {
+        margin: 16px 0 0;
+        overflow-x: auto;
+        border-radius: 8px;
+        background: var(--code);
+        color: #eaf2f8;
+        padding: 18px;
+        font-size: 0.95rem;
+      }
+
+      .record-flow {
+        display: grid;
+        grid-template-columns: minmax(0, 0.84fr) minmax(420px, 1.16fr);
+        gap: 28px;
+        align-items: center;
+      }
+
+      .section-copy {
+        max-width: 62ch;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      .demo-note {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .account-demo {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: 0 18px 48px rgb(20 32 51 / 10%);
+        overflow: hidden;
+      }
+
+      .demo-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border);
+        background: #f4f6f9;
+        padding: 12px 16px;
+        gap: 16px;
+      }
+
+      .demo-object {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .demo-icon {
+        display: inline-flex;
+        width: 32px;
+        height: 32px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: var(--brand);
+        color: #ffffff;
+        font-weight: 700;
+      }
+
+      .demo-label {
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .demo-name {
+        font-weight: 700;
+      }
+
+      .demo-action {
+        border: 1px solid var(--brand);
+        border-radius: 6px;
+        background: var(--brand);
+        color: #ffffff;
+        padding: 8px 12px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .demo-body {
+        display: grid;
+        grid-template-columns: 0.76fr 1.24fr;
+        gap: 0;
+      }
+
+      .demo-fields,
+      .demo-merge-panel {
+        padding: 16px;
+      }
+
+      .demo-fields {
+        border-right: 1px solid var(--border);
+        background: #fbfcfd;
+      }
+
+      .demo-field {
+        margin-bottom: 12px;
+      }
+
+      .demo-field span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.76rem;
+      }
+
+      .demo-field strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 0.92rem;
+      }
+
+      .demo-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
+      .demo-panel-title {
+        font-weight: 700;
+      }
+
+      .demo-pill {
+        border-radius: 999px;
+        background: #eaf5ec;
+        color: #22683e;
+        padding: 4px 8px;
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      .demo-records {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .demo-record {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .demo-record.selected {
+        border-color: var(--brand);
+        background: #f2f8fd;
+      }
+
+      .demo-record-name {
+        display: block;
+        font-weight: 700;
+      }
+
+      .demo-record-id {
+        color: var(--muted);
+        font-size: 0.76rem;
+      }
+
+      .demo-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.86rem;
+      }
+
+      .demo-table th,
+      .demo-table td {
+        border-top: 1px solid var(--border);
+        padding: 8px 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .demo-table th {
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .demo-choice {
+        border-radius: 6px;
+        background: #fff7e6;
+        padding: 3px 5px;
+      }
+
+      .screenshots {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .screenshots figure {
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .screenshots img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .screenshots figcaption {
+        padding: 12px 14px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .footer {
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .footer-inner {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      @media (max-width: 840px) {
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+          justify-content: center;
+          padding-top: 16px;
+          padding-bottom: 16px;
+        }
+
+        .nav-links {
+          flex-wrap: wrap;
+        }
+
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .feature-grid,
+        .screenshots,
+        .record-flow,
+        .demo-body,
+        .demo-records {
+          grid-template-columns: 1fr;
+        }
+
+        .demo-fields {
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="./">Salesforce Duplicate Manager</a>
+        <div class="nav-links">
+          <a href="GETTING_STARTED.html">Install</a>
+          <a href="USAGE.html">Usage</a>
+          <a href="https://github.com/andrii-solokh/DuplicateManager">GitHub</a>
+          <a href="https://github.com/andrii-solokh/DuplicateManager/releases"
+            >Releases</a
+          >
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Open-source Salesforce duplicate management</p>
+          <h1>Salesforce Duplicate Manager</h1>
+          <p class="lead">
+            Find, review, and merge duplicate Salesforce records with a
+            Lightning Web Components dashboard, Apex scan jobs, and field-level
+            merge controls powered by Salesforce Duplicate Management.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="GETTING_STARTED.html"
+              >Install the package</a
+            >
+            <a
+              class="button"
+              href="https://github.com/andrii-solokh/DuplicateManager"
+            >
+              View on GitHub
+            </a>
+          </div>
+        </div>
+        <div class="hero-media">
+          <img
+            src="images/home.png"
+            alt="Salesforce Duplicate Manager dashboard with duplicate record set cards"
+            width="3024"
+            height="1428"
+          />
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="features-heading">
+        <h2 id="features-heading">Built for Salesforce data cleanup</h2>
+        <div class="feature-grid">
+          <div class="feature">
+            <h3>Duplicate scanning</h3>
+            <p>
+              Queueable Apex jobs scan records with Salesforce native
+              <code>Datacloud.FindDuplicates</code> support.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Record review</h3>
+            <p>
+              Filter duplicate sets by object, inspect matching records, and
+              track scan status from one Lightning dashboard.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Field-level merge</h3>
+            <p>
+              Compare duplicate records side by side and choose the values to
+              keep before merging.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Account record page workflow</h3>
+            <p>
+              Use the merge experience for focused Account cleanup when users
+              only need to compare and merge account duplicates.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="section record-flow"
+        aria-labelledby="record-page-heading"
+      >
+        <div>
+          <h2 id="record-page-heading">
+            Merge account duplicates from a record page
+          </h2>
+          <p class="section-copy">
+            Duplicate Manager can support a focused Account record page workflow
+            for teams that do not need the full dashboard. Start from an Account
+            record, review detected duplicates, choose the master account, and
+            keep the best field values.
+          </p>
+          <p class="demo-note">
+            The mock record below uses deterministic demo data only. It does not
+            include customer, employee, or personal information.
+          </p>
+        </div>
+
+        <div
+          class="account-demo"
+          aria-label="Demo Account record page merge workflow"
+        >
+          <div class="demo-topbar">
+            <div class="demo-object">
+              <span class="demo-icon">A</span>
+              <div>
+                <div class="demo-label">Account</div>
+                <div class="demo-name">Acme Demo Manufacturing</div>
+              </div>
+            </div>
+            <div class="demo-action">Review Duplicates</div>
+          </div>
+
+          <div class="demo-body">
+            <div class="demo-fields">
+              <div class="demo-field">
+                <span>Website</span>
+                <strong>acme-demo.example</strong>
+              </div>
+              <div class="demo-field">
+                <span>Phone</span>
+                <strong>(555) 010-0142</strong>
+              </div>
+              <div class="demo-field">
+                <span>Billing City</span>
+                <strong>Denver</strong>
+              </div>
+              <div class="demo-field">
+                <span>Industry</span>
+                <strong>Manufacturing</strong>
+              </div>
+            </div>
+
+            <div class="demo-merge-panel">
+              <div class="demo-panel-header">
+                <div class="demo-panel-title">Potential duplicate accounts</div>
+                <div class="demo-pill">2 records</div>
+              </div>
+
+              <div class="demo-records">
+                <div class="demo-record selected">
+                  <span class="demo-record-name">Acme Demo Manufacturing</span>
+                  <span class="demo-record-id">001-DEMO-0001</span>
+                </div>
+                <div class="demo-record">
+                  <span class="demo-record-name">Acme Demo Mfg.</span>
+                  <span class="demo-record-id">001-DEMO-0002</span>
+                </div>
+              </div>
+
+              <table class="demo-table">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Keep</th>
+                    <th>Duplicate value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Account Name</td>
+                    <td>
+                      <span class="demo-choice">Acme Demo Manufacturing</span>
+                    </td>
+                    <td>Acme Demo Mfg.</td>
+                  </tr>
+                  <tr>
+                    <td>Industry</td>
+                    <td><span class="demo-choice">Manufacturing</span></td>
+                    <td>Industrial Supplies</td>
+                  </tr>
+                  <tr>
+                    <td>Website</td>
+                    <td>acme-demo.example</td>
+                    <td>acme-demo.example</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section install" aria-labelledby="install-heading">
+        <h2 id="install-heading">Install the latest promoted package</h2>
+        <p>
+          Version <strong>1.5.1.2</strong> is promoted for production Salesforce
+          orgs. Assign the <code>Duplicate_Manager</code> permission set after
+          installation.
+        </p>
+        <pre><code>sf package install --package 04tgK0000009cxJQAQ --target-org your-org-alias --wait 10
+sf org assign permset --name Duplicate_Manager --target-org your-org-alias</code></pre>
+      </section>
+
+      <section class="section" aria-labelledby="screenshots-heading">
+        <h2 id="screenshots-heading">Screenshots</h2>
+        <div class="screenshots">
+          <figure>
+            <img
+              src="images/home.png"
+              alt="Salesforce duplicate management dashboard"
+              width="3024"
+              height="1428"
+              loading="lazy"
+            />
+            <figcaption>
+              Duplicate set dashboard with object filters and scan status.
+            </figcaption>
+          </figure>
+          <figure>
+            <img
+              src="images/merge.png"
+              alt="Salesforce duplicate record merge comparison"
+              width="2340"
+              height="1578"
+              loading="lazy"
+            />
+            <figcaption>
+              Side-by-side duplicate record comparison and merge selection.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        MIT licensed. Built with Apex, Lightning Web Components, and Salesforce
+        Duplicate Management.
+      </div>
+    </footer>
+  </body>
+</html>

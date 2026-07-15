@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="{{ site.lang | default: 'en' }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      {{ page.title | default: site.title }} | Salesforce Duplicate Manager
+    </title>
+    <meta
+      name="description"
+      content="{{ page.description | default: site.description | escape }}"
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{{ page.url | absolute_url }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="{{ page.url | absolute_url }}" />
+    <meta
+      property="og:title"
+      content="{{ page.title | default: site.title | escape }}"
+    />
+    <meta
+      property="og:description"
+      content="{{ page.description | default: site.description | escape }}"
+    />
+    <meta
+      property="og:image"
+      content="{{ '/images/home.png' | absolute_url }}"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="{{ page.title | default: site.title | escape }}"
+    />
+    <meta
+      name="twitter:description"
+      content="{{ page.description | default: site.description | escape }}"
+    />
+    <style>
+      :root {
+        --bg: #f7f9fb;
+        --surface: #ffffff;
+        --text: #142033;
+        --muted: #516173;
+        --border: #d8e0e8;
+        --brand: #0176d3;
+        --brand-dark: #0b5cab;
+        --code: #102a43;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.6;
+      }
+
+      a {
+        color: var(--brand-dark);
+      }
+
+      .site-header {
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .nav {
+        display: flex;
+        max-width: 920px;
+        min-height: 64px;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 auto;
+        padding: 0 24px;
+        gap: 20px;
+      }
+
+      .brand {
+        color: var(--text);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        font-size: 0.95rem;
+      }
+
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+
+      article {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 32px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: clamp(2rem, 5vw, 3rem);
+      }
+
+      h2 {
+        margin-top: 2.2rem;
+      }
+
+      code {
+        color: var(--code);
+      }
+
+      pre {
+        overflow-x: auto;
+        border-radius: 8px;
+        background: var(--code);
+        color: #eaf2f8;
+        padding: 18px;
+      }
+
+      pre code {
+        color: inherit;
+      }
+
+      @media (max-width: 720px) {
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+          justify-content: center;
+          padding-top: 16px;
+          padding-bottom: 16px;
+        }
+
+        article {
+          padding: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="{{ '/' | relative_url }}"
+          >Salesforce Duplicate Manager</a
+        >
+        <div class="nav-links">
+          <a href="{{ '/GETTING_STARTED.html' | relative_url }}">Install</a>
+          <a href="{{ '/USAGE.html' | relative_url }}">Usage</a>
+          <a href="https://github.com/andrii-solokh/DuplicateManager">GitHub</a>
+        </div>
+      </nav>
+    </header>
+    <main>
+      <article>{{ content }}</article>
+    </main>
+  </body>
+</html>

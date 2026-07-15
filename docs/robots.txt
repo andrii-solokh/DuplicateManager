@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://andrii-solokh.github.io/DuplicateManager/sitemap.xml
