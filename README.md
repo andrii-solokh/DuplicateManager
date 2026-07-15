@@ -1,15 +1,26 @@
-# Duplicate Manager
+# Salesforce Duplicate Manager
 
 [![Salesforce API](https://img.shields.io/badge/Salesforce%20API-63.0-blue)](https://developer.salesforce.com)
+[![Package Version](https://img.shields.io/badge/Package-1.5.1.2-00A1E0)](https://github.com/andrii-solokh/DuplicateManager/releases/tag/DuplicateManager-v1.5.1)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Project Site](https://img.shields.io/badge/Docs-GitHub%20Pages-2ea44f)](https://andrii-solokh.github.io/DuplicateManager/)
 
-A modern, open-source Salesforce unlocked package for viewing, managing, and merging duplicate
-records. Built with Lightning Web Components and leveraging Salesforce's native duplicate detection
-API.
+Salesforce Duplicate Manager is an open-source Salesforce duplicate management app and unlocked
+package for finding, reviewing, and merging duplicate Account, Contact, Lead, Case, and custom
+object records. It combines a Lightning Web Components dashboard, Apex scan jobs, and field-level
+merge controls built on Salesforce Duplicate Management and `Datacloud.FindDuplicates`.
+Teams can also use the merge experience for focused Account cleanup workflows from an Account
+record page, when users only need to compare and merge duplicate account records.
 
-![Duplicate Manager Dashboard](docs/images/home.png)
+![Salesforce Duplicate Manager dashboard showing duplicate record sets](docs/images/home.png)
 
-![Merge Modal](docs/images/merge.png)
+![Salesforce duplicate record merge modal with field comparison](docs/images/merge.png)
+
+## Project Links
+
+- [Project website](https://andrii-solokh.github.io/DuplicateManager/)
+- [Latest release](https://github.com/andrii-solokh/DuplicateManager/releases/tag/DuplicateManager-v1.5.1)
+- [GitHub repository](https://github.com/andrii-solokh/DuplicateManager)
 
 ## Features
 
@@ -17,6 +28,8 @@ API.
   organization
 - **Field-by-Field Merge** - Side-by-side record comparison with the ability to cherry-pick values
   from any duplicate
+- **Account Record Page Workflow** - Supports focused Account cleanup scenarios where users merge
+  account duplicates without starting from the full duplicate dashboard
 - **Automated Scanning** - Queueable job that scans records using Salesforce's native
   `Datacloud.FindDuplicates` API
 - **Scheduling** - Built-in scheduler for daily, weekly, or monthly automated duplicate scans
@@ -30,8 +43,8 @@ API.
 ### Option 1: Install from Package (Recommended)
 
 ```bash
-# Install the latest version
-sf package install --package DuplicateManager@1.0.0-1 --target-org your-org-alias --wait 10
+# Install the latest promoted package version: 1.5.1.2
+sf package install --package 04tgK0000009cxJQAQ --target-org your-org-alias --wait 10
 
 # Assign permission set
 sf org assign permset --name Duplicate_Manager --target-org your-org-alias

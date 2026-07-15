@@ -1,3 +1,9 @@
+---
+layout: default
+title: Salesforce Duplicate Manager Development Guide
+description: Set up local development for the Salesforce Duplicate Manager Apex and Lightning Web Components project.
+---
+
 # Development Guide
 
 This guide covers local development setup for contributing to Duplicate Manager.
@@ -249,7 +255,7 @@ sf package version create \
 
 ```bash
 sf package version promote \
-  --package DuplicateManager@1.0.0-1 \
+  --package DuplicateManager@1.5.1-2 \
   --target-dev-hub your-devhub \
   --no-prompt
 ```

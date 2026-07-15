@@ -1,3 +1,9 @@
+---
+layout: default
+title: Salesforce Duplicate Manager Testing Guide
+description: Run Apex and Lightning Web Components tests for Salesforce Duplicate Manager.
+---
+
 # Testing Guide
 
 This guide covers testing Duplicate Manager, including running tests, creating test data, and best
@@ -224,7 +230,7 @@ import getDuplicateSets from "@salesforce/apex/DuplicateViewerController.getDupl
 jest.mock(
   "@salesforce/apex/DuplicateViewerController.getDuplicateSets",
   () => ({ default: jest.fn() }),
-  { virtual: true }
+  { virtual: true },
 );
 
 describe("c-duplicate-viewer", () => {
@@ -237,7 +243,7 @@ describe("c-duplicate-viewer", () => {
 
   it("displays loading spinner initially", () => {
     const element = createElement("c-duplicate-viewer", {
-      is: DuplicateViewer
+      is: DuplicateViewer,
     });
     document.body.appendChild(element);
 
